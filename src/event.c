@@ -51,9 +51,6 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 					pRect->y = (pRect->h * -1.0f);
 				break;
 			}
-		case (SDLK_3):
-				printf("w:%f\th:%f\n", pRect->w, pRect->h);
-				break;
 		case (SDLK_1):
 			{
 				pRect->w *= 1.1f;
@@ -91,6 +88,47 @@ SmoothMoveRect(int key, PDFView *pView, float factor)
 	MoveRect(key, pView, &(pView)->nextView);
 }
 
+SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
+
+void
+NextPage(void)
+{
+	gPdf.page_nbr++;
+	if (gPdf.page_nbr >= gPdf.page_count)
+		gPdf.page_nbr = 0;
+		
+	int i = gPdf.page_nbr;
+	SDL_DestroyTexture(gPdf.pTexture);
+	gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[i], gPdf.pCtx);
+	if (!gPdf.pTexture) 
+	{ fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return; }
+}
+
+void
+PreviousPage(void)
+{
+	gPdf.page_nbr--;
+	if (gPdf.page_nbr <= 0)
+		gPdf.page_nbr = 0;
+
+	int i = gPdf.page_nbr;
+	SDL_DestroyTexture(gPdf.pTexture);
+	gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[i], gPdf.pCtx);
+	if (!gPdf.pTexture) 
+	{ fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return; }
+}
+
+typedef struct sInfo
+{
+	int		pageNbr;
+	int		pageStart;
+	float	zoom;
+	float	rotate;
+	float	dpi;
+}sInfo;
+
+int LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
+
 void
 Event(SDL_Event *e)
 {
@@ -109,8 +147,17 @@ Event(SDL_Event *e)
 			case (SDLK_k):
 			case (SDLK_1):
 			case (SDLK_2):
-			case (SDLK_3):
 				MoveRect(e->key.keysym.sym, &gView, &gView.nextView);
+				break;
+			case (SDLK_RIGHT):
+				NextPage();
+				break;
+			case (SDLK_LEFT):
+				PreviousPage();
+				break;
+			case (SDLK_3):
+				sInfo sInfo = {.pageNbr = 10, 3, 800, 0};
+				LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo);
 				break;
 		}
 	}

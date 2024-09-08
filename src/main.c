@@ -1,6 +1,7 @@
 #include "init.h"
 #include "pdf.h"
 #include "gui.h"
+#include "os_threads.h"
 
 #include <tracy/TracyC.h>
 
@@ -16,6 +17,7 @@ extern Instance gInst;
 Instance gInst = {.running = true, .width = 1920, .height = 1080};
 
 PDFView gView = {0};
+PDF gPdf = {0};
 
 SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
 
@@ -32,7 +34,9 @@ main(int argc, char **ppArgv)
 	if (!pdf.ppPix){ return 1; }
 
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
-	if (!pdf.pTexture) { fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return 1; }
+	if (!pdf.pTexture) 
+	{ fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return 1; }
+	gPdf = pdf;
 
 	int w = 0, h = 0; 
 	SDL_QueryTexture(pdf.pTexture, NULL, NULL, &w, &h);
@@ -79,8 +83,7 @@ main(int argc, char **ppArgv)
 			SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(gInst.pRenderer);
 
-			/* SDL_RenderCopyF(gInst.pRenderer, pdf.pTexture, NULL, &gView.currentView); */
-			SDL_RenderCopyF(gInst.pRenderer, pdf.pTexture, NULL, &gView.currentView);
+			SDL_RenderCopyF(gInst.pRenderer, gPdf.pTexture, NULL, &gView.currentView);
 
 			SDL_RenderPresent(gInst.pRenderer);
 			check.x = gView.currentView.x;

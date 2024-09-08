@@ -22,7 +22,7 @@ LIBS =-lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -lmsvcrtd -luser
 LIB_PATH =-LC:/Lib/SDL2/lib\
 		  -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
 
-CFLAGS = -MT -fsanitize=address -DTRACY_ENABLE
+CFLAGS = -MT -fsanitize=address -DTRACY_ENABLE -DPLATFORM_WINDOWS
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
 CFLAGS += -g -O0 -fdeclspec -MJ$(JSON_FILE)

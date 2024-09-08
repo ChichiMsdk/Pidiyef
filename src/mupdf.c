@@ -23,6 +23,9 @@ CreatePDFPage(fz_context *ctx, const char *file)
 	return pix;
 }
 
+#include "os_threads.h"
+#define MAX_PIXMAPS 100
+
 PDF
 CreatePDF(char *input, int page_number, float zoom, float rotate)
 {
@@ -33,12 +36,29 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	fz_matrix ctm;
 	int x, y;
 	PDF pdf = {0};
-	pdf.ppPix = malloc(sizeof(fz_pixmap*));
+	pdf.ppPix = malloc(sizeof(fz_pixmap*) * MAX_PIXMAPS);
 	pdf.zoom = zoom;
 	pdf.rotate = rotate;
 
+	fz_locks_context locks;
+	Mutex	**ppMutexes = malloc(sizeof(void*) * 100);
+
+	for (int i = 0; i < FZ_LOCK_MAX; i++)
+	{
+		ppMutexes[i] = myCreateMutex();
+		if (!ppMutexes[i])
+		{
+			fprintf(stderr, "Could not create mutex\n");
+			exit(1);
+		}
+	}
+
+	locks.user = ppMutexes;
+	locks.lock = myLockMutex;
+	locks.unlock = myUnlockMutex;
+
 	/* Create a context to hold the exception stack and various caches. */
-	ctx = fz_new_context(NULL, NULL, FZ_STORE_UNLIMITED);
+	ctx = fz_new_context(NULL, &locks, FZ_STORE_UNLIMITED);
 	if (!ctx)
 	{ fprintf(stderr, "cannot create mupdf context\n"); return pdf; }
 	/* Register the default file types to handle. */
@@ -100,6 +120,9 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	/* fz_drop_context(ctx); */
 	pdf.ppPix[0] = pix;
 	pdf.pCtx = ctx;
+	pdf.page_count = 1;
+	pdf.page_nbr = 1;
+	pdf.pFile = input;
 	fz_drop_document(ctx, doc);
 	return pdf;
 }
