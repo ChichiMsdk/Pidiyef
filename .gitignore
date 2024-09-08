@@ -1,0 +1,8 @@
+.ignore
+.clangd
+.cache/
+build/
+*.json
+*.pdf
+compile_flags.txt
+cmd.txt
