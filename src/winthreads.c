@@ -30,10 +30,16 @@ myLockMutex(void *pData, int lock)
 	WaitForSingleObject(ppMutex[lock], INFINITE);
 }
 
-Mutex 
+/**
+ * return 0 when success, other if failure
+ */
+int 
 myCreateMutex(Mutex *pMutex)
 {
-	return CreateMutexA(NULL, FALSE, NULL);
+	*pMutex = CreateMutexA(NULL, FALSE, NULL);
+	if (!(*pMutex))
+		return 1;
+	return 0;
 }
 
 int

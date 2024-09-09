@@ -42,15 +42,10 @@ myUnlockMutex(void *user, int lock)
 	}
 }
 
-Mutex
+int
 myCreateMutex(Mutex *pMutex)
 {
-	if (pthread_mutex_init(pMutex, NULL) != 0)
-	{
-		ThreadFail("myCreateMutex\n");
-		abort();
-	}
-	return *pMutex;
+	return pthread_mutex_init(pMutex, NULL);
 }
 
 int

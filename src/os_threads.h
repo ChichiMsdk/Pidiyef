@@ -38,7 +38,7 @@ typedef struct sInfo
 	float	dpi;
 }sInfo;
 
-Mutex	myCreateMutex(Mutex *pMutex);
+int		myCreateMutex(Mutex *pMutex);
 int		myDestroyMutex(Mutex *pMutex);
 void	myLockMutex(void *pData, int lock);
 void	myUnlockMutex(void *pData, int lock);
