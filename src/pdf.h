@@ -8,8 +8,8 @@
 	typedef pthread_t myThread;
 	typedef pthread_mutex_t Mutex;
 #elif PLATFORM_WINDOWS
-	typedef HANDLE myThread;
-	typedef void *pMutex, Mutex;
+	typedef void* myThread;
+	typedef void* Mutex;
 #endif
 
 typedef struct PDF
@@ -24,7 +24,6 @@ typedef struct PDF
 	int page_nbr;
 	int zoom;
 	float rotate;
-	Mutex	pMutexes[FZ_LOCK_MAX];
 	Mutex	*ppMutexes;
 }PDF;
 

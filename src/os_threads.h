@@ -23,8 +23,8 @@ typedef struct tData
 	typedef pthread_t myThread;
 	typedef pthread_mutex_t Mutex;
 #elif PLATFORM_WINDOWS
-	typedef HANDLE myThread;
-	typedef void *pMutex, Mutex;
+	typedef void* myThread;
+	typedef void* Mutex;
 #endif
 
 

@@ -30,8 +30,8 @@ myLockMutex(void *pData, int lock)
 	WaitForSingleObject(ppMutex[lock], INFINITE);
 }
 
-pMutex 
-myCreateMutex(pMutex pMutex)
+Mutex 
+myCreateMutex(Mutex *pMutex)
 {
 	return CreateMutexA(NULL, FALSE, NULL);
 }
@@ -45,7 +45,7 @@ myDestroyMutex(Mutex *pMutex)
 void
 myWaitThreads(myThread *pThreads, int threadCount)
 {
-	WaitForMultipleObjects(threadCount, ppThreads, TRUE, INFINITE);
+	WaitForMultipleObjects(threadCount, pThreads, TRUE, INFINITE);
 }
 
 myThread
