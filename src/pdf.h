@@ -25,6 +25,7 @@ typedef struct PDF
 	int zoom;
 	float rotate;
 	Mutex	pMutexes[FZ_LOCK_MAX];
+	Mutex	*ppMutexes;
 }PDF;
 
 typedef struct PDFView

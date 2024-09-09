@@ -41,12 +41,13 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	pdf.rotate = rotate;
 
 	fz_locks_context locks;
-	/* Mutex	**ppMutexes = malloc(sizeof(void*) * 100); */
+	Mutex	*ppMutexes = malloc(sizeof(pthread_mutex_t) * FZ_LOCK_MAX);
 	/* pthread_mutex_t	ppMutexes[FZ_LOCK_MAX]; */
 
 	for (int i = 0; i < FZ_LOCK_MAX; i++)
 	{
-		pdf.pMutexes[i] = myCreateMutex(&pdf.pMutexes[i]);
+		/* pdf.pMutexes[i] = myCreateMutex(&pdf.pMutexes[i]); */
+		ppMutexes[i] = myCreateMutex(&pdf.pMutexes[i]);
         /*
 		 * if (!ppMutexes[i])
 		 * {
@@ -55,8 +56,8 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 		 * }
          */
 	}
-
-	locks.user = pdf.pMutexes;
+	pdf.ppMutexes = ppMutexes;
+	locks.user = pdf.ppMutexes;
 	locks.lock = myLockMutex;
 	locks.unlock = myUnlockMutex;
 
