@@ -20,6 +20,7 @@ typedef struct PDF
 	fz_document *pDoc;
 	fz_pixmap **ppPix;
 	size_t page_count;
+	size_t total_count;
 	int size;
 	int page_nbr;
 	int zoom;

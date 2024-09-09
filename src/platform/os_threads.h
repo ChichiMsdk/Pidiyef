@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define MAX_THREADS 8
+
 // thread data
 typedef struct tData
 {
@@ -27,7 +29,6 @@ typedef struct tData
 	typedef void* Mutex;
 #endif
 
-
 // provide function for specific pages ?..
 typedef struct sInfo
 {
@@ -38,11 +39,16 @@ typedef struct sInfo
 	float	dpi;
 }sInfo;
 
-int		myCreateMutex(Mutex *pMutex);
-int		myDestroyMutex(Mutex *pMutex);
-void	myLockMutex(void *pData, int lock);
-void	myUnlockMutex(void *pData, int lock);
-void	myWaitThreads(myThread *pThreads, int threadCount);
-int		LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
+int			myCreateMutex(Mutex *pMutex);
+int			myDestroyMutex(Mutex *pMutex);
+void		myLockMutex(void *pData, int lock);
+void		myUnlockMutex(void *pData, int lock);
+
+myThread	myCreateThread(tData *ptData);
+int			myDestroyThread(myThread Thread);
+void		myWaitThreads(myThread *pThreads, int threadCount);
+
+int			LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
+void		ThreadFail(char *pMsg);
 
 #endif // OS_THREADS_H
