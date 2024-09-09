@@ -23,10 +23,10 @@ Init(int ac, char **av, Instance *inst)
         exit(1);
     }
 	SDL_Window *window = SDL_CreateWindow( "Pdf Viewer",
-			SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED,
+			SDL_WINDOWPOS_CENTERED,
+			SDL_WINDOWPOS_CENTERED,
 			gInst.width , gInst.height,
-			SDL_WINDOW_SHOWN);
+			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
 	if (!window)
 	{
 		fprintf(stderr, "Window failed\nSDL_Error: %s\n", SDL_GetError()); 

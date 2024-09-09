@@ -8,13 +8,13 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#define mMAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#define mMIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define mIsSame(a, b) ((a.x == b.x && a.y == b.y) ? 1 : 0)
 
 
 extern Instance gInst;
-Instance gInst = {.running = true, .width = 1920, .height = 1080};
+Instance gInst = {.running = true, .width = 1000, .height = 700};
 
 PDFView gView = {0};
 PDF gPdf = {0};
@@ -24,14 +24,18 @@ SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_contex
 int
 main(int argc, char **ppArgv)
 {
+	printf("Init\n");
 	Init(argc, ppArgv, &gInst);
+	printf("Ended init\n");
 	int page_number = atoi(ppArgv[2]) - 1;
 	int zoom = argc > 3 ? atof(ppArgv[3]) : 100;
 	int rotate = argc > 4 ? atof(ppArgv[4]) : 0;
 
 	// Wrong naming and design, pdf.ppPix is allocated
+	printf("Creating PDF\n");
 	PDF pdf = CreatePDF(ppArgv[1], page_number, zoom, rotate);
 	if (!pdf.ppPix){ return 1; }
+	printf("Ended pdf\n");
 
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
 	if (!pdf.pTexture) 

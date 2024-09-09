@@ -133,6 +133,7 @@ void
 Event(SDL_Event *e)
 {
 	SDL_PollEvent(e);
+	sInfo sInfo = {.pageNbr = 10, 3, 800, 0};
 	if(e->type == SDL_QUIT) { gInst.running = 0; }
 	if(e->type == SDL_KEYDOWN) 
 	{
@@ -156,7 +157,6 @@ Event(SDL_Event *e)
 				PreviousPage();
 				break;
 			case (SDLK_3):
-				sInfo sInfo = {.pageNbr = 10, 3, 800, 0};
 				LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo);
 				break;
 		}

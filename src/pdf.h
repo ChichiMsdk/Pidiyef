@@ -4,6 +4,14 @@
 #include <mupdf/fitz.h>
 #include <SDL2/SDL_rect.h>
 
+#ifdef PLATFORM_LINUX
+	typedef pthread_t myThread;
+	typedef pthread_mutex_t Mutex;
+#elif PLATFORM_WINDOWS
+	typedef HANDLE myThread;
+	typedef void *pMutex, Mutex;
+#endif
+
 typedef struct PDF
 {
 	const char *pFile;
@@ -16,6 +24,7 @@ typedef struct PDF
 	int page_nbr;
 	int zoom;
 	float rotate;
+	Mutex	pMutexes[FZ_LOCK_MAX];
 }PDF;
 
 typedef struct PDFView

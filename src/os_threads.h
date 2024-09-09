@@ -19,7 +19,14 @@ typedef struct tData
 
 }tData;
 
-typedef void *pMutex, Mutex;
+#ifdef PLATFORM_LINUX
+	typedef pthread_t myThread;
+	typedef pthread_mutex_t Mutex;
+#elif PLATFORM_WINDOWS
+	typedef HANDLE myThread;
+	typedef void *pMutex, Mutex;
+#endif
+
 
 // provide function for specific pages ?..
 typedef struct sInfo
@@ -31,10 +38,11 @@ typedef struct sInfo
 	float	dpi;
 }sInfo;
 
-pMutex	myCreateMutex(void);
+Mutex	myCreateMutex(Mutex *pMutex);
 int		myDestroyMutex(Mutex *pMutex);
 void	myLockMutex(void *pData, int lock);
 void	myUnlockMutex(void *pData, int lock);
+void	myWaitThreads(myThread *pThreads, int threadCount);
 int		LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
 
 #endif // OS_THREADS_H

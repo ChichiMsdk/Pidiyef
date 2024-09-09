@@ -31,7 +31,7 @@ myLockMutex(void *pData, int lock)
 }
 
 pMutex 
-myCreateMutex(void)
+myCreateMutex(pMutex pMutex)
 {
 	return CreateMutexA(NULL, FALSE, NULL);
 }
@@ -42,11 +42,29 @@ myDestroyMutex(Mutex *pMutex)
 	return 1;
 }
 
+void
+myWaitThreads(myThread *pThreads, int threadCount)
+{
+	WaitForMultipleObjects(threadCount, ppThreads, TRUE, INFINITE);
+}
+
+myThread
+myCreateThread(tData *ptData, myThread *pThread)
+{
+	return CreateThread(NULL, 0, tRenderPage, ptData, 0, &ptData->id);
+}
+
+int
+myDestroyThread(myThread Thread)
+{
+	return CloseHandle(Thread);
+}
+
 int
 LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
 {
 	tData *ptData[100];
-	HANDLE *ppThreads;
+	myThread *ppThreads;
 	int count = 0;
 	fz_document *pDoc = fz_open_document(pCtx, pFile);
 	assert(pDoc);
@@ -108,7 +126,7 @@ LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo
 				ExitProcess(3);
 			}
 		}
-		WaitForMultipleObjects(count, ppThreads, TRUE, INFINITE);
+		myWaitThreads(ppThreads, count);
 		fprintf(stderr, "MainThread leaving\n");
 		for(int i = 0; i < count; i++)
 		{
@@ -165,7 +183,9 @@ tRenderPage(void *pData)
 	fz_try(pCtx)
 	{
 		// Create a white pixmap using the correct dimensions.
-		ptData->pix = fz_new_pixmap_with_bbox(pCtx, fz_device_rgb(pCtx), fz_round_rect(bbox), NULL, 0);
+		ptData->pix = fz_new_pixmap_with_bbox(pCtx,
+				fz_device_rgb(pCtx), fz_round_rect(bbox), NULL, 0);
+
 		fz_clear_pixmap_with_value(pCtx, ptData->pix, 0xff);
 
 		// Do the actual rendering.
