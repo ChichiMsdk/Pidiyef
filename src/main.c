@@ -13,7 +13,7 @@
 #define mIsSame(a, b) ((a.x == b.x && a.y == b.y) ? 1 : 0)
 
 extern int gRender;
-int gRender = 0;
+int gRender = false;
 
 extern Instance gInst;
 Instance gInst = {.running = true, .width = 1000, .height = 700};
@@ -73,7 +73,7 @@ main(int argc, char **ppArgv)
 		UpdateSmooth(factor);
 
 		// Check if it moved
-		if (!SDL_FRectEquals(&check, &gView.currentView) || gRender == 1)
+		if (!SDL_FRectEquals(&check, &gView.currentView) || gRender == true)
 		{
 			SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(gInst.pRenderer);
@@ -85,7 +85,7 @@ main(int argc, char **ppArgv)
 			check.y = gView.currentView.y;
 			check.w = gView.currentView.w;
 			check.h = gView.currentView.h;
-			gRender = 0;
+			gRender = false;
 		}
 	}
 	fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
