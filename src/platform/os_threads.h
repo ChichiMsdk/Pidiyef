@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/*
+ * NOTE: Where does that even come from ?
+ * Could it be superior to 8 ? Infinite ? Wtf
+ */
 #define MAX_THREADS 8
 
 // thread data
@@ -29,7 +33,7 @@ typedef struct tData
 	typedef void* Mutex;
 #endif
 
-// provide function for specific pages ?..
+ /* NOTE: provide function for specific pages ?.. */
 typedef struct sInfo
 {
 	int		pageNbr;
