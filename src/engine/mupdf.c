@@ -102,7 +102,7 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 		fz_drop_context(ctx);
 		return pdf;
 	}
-	/* Open the document. */
+
 	fz_try(ctx)
 		doc = fz_open_document(ctx, input);
 	fz_catch(ctx)
@@ -112,7 +112,7 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 		fz_drop_context(ctx);
 		return pdf;
 	}
-	/* Count the number of pages. */
+
 	fz_try(ctx)
 		page_count = fz_count_pages(ctx, doc);
 	fz_catch(ctx)
@@ -133,7 +133,6 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 		fz_drop_context(ctx);
 		return pdf;
 	}
-
 	pdf.total_count = page_count;
 	/* Compute a transformation matrix for the zoom and rotation desired. */
 	/* The default resolution without scaling is 72 dpi. */
@@ -227,8 +226,7 @@ LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo
 			ptData[i]->id = 0;
 			
 			ppThreads[i] = myCreateThread(ptData[i]);
-			// Should be fine
-			if (ppThreads[i] == NULL) 
+			if (ppThreads[i] == (myThread)0) 
 			{
 				ThreadFail("CreateThread");
 				exit(1);
