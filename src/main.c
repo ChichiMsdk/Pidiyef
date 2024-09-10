@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define mMAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-#define mMIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define mIsSame(a, b) ((a.x == b.x && a.y == b.y) ? 1 : 0)
 
 extern int gRender;
