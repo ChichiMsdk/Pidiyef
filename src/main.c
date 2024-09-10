@@ -1,5 +1,5 @@
 #include "init.h"
-#include "pdf.h"
+#include "engine/pdf.h"
 #include "gui.h"
 #include "platform/os_threads.h"
 
@@ -8,33 +8,121 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define mMAX(X, Y) (((X) > (Y)) ? (X) : (Y))
-#define mMIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define mIsSame(a, b) ((a.x == b.x && a.y == b.y) ? 1 : 0)
+/*
+ * -	Initialize the mudpf context.
+ * 
+ * -	Allocate an array of PDFPage of size of total number of pages.
+ * 
+ * -	Take 20 pages following the first one requested.
+ * 		Spawn as many threads as needed to request the pages, dividing
+ * 		the job equally between them.
+ *
+ * -	Add mutexes to signal the availability of a texture.
+ * 
+ * -	Only thread allowed to destroy texture is the main one.	
+ */
 
-extern int gRender;
-int gRender = 0;
+/*
+ * TODO:
+ * - Don't forget to free mutexes array and destroy them ! (OS dependant)
+ * - Separate main rendering thread (SDL) from "engineMUPDF" one.
+ * - TimeOut least susceptible used page to free memory
+ * - Vim motions: ":" + "cmd"
+ * - Refactor the main and the way things set themselves up (separate muPDF ?)
+ * - SDL_QueryTexture() when we create a new one to udpate gView
+ * - Wrap modifying globals with mutexes i.e: ToggleState(some global)
+ */
 
-extern Instance gInst;
-Instance gInst = {.running = true, .width = 1000, .height = 700};
-
-PDFView gView = {0};
-PDF gPdf = {0};
-
+/*	FEATURES
+ * - Bookmark a page to put it on the left (in scratch form so we can draw?)
+ */
 SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
 static inline void UpdateSmooth(float factor);
 
-int
-main(int argc, char **ppArgv)
-{
-	Init(argc, ppArgv, &gInst);
-	int page_number = atoi(ppArgv[2]) - 1;
-	int zoom = argc > 3 ? atof(ppArgv[3]) : 100;
-	int rotate = argc > 4 ? atof(ppArgv[4]) : 0;
+extern int gRender;
+extern Instance gInst;
+int gRender = false;
+Instance gInst = {.running = true, .width = 1000, .height = 700};
+PDFView gView = {0};
+PDFContext gPdf = {0};
 
-	// Wrong naming and design, pdf.ppPix is allocated
-	PDF pdf = CreatePDF(ppArgv[1], page_number, zoom, rotate);
-	if (!pdf.ppPix){ return 1; }
+PDFPage *
+LoadPagesArray(size_t nbOfPages)
+{
+	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
+	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
+	return pPages;
+}
+
+void *
+CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
+{
+	PdfCtx->pFile = pFile;
+	PdfCtx->DefaultInfo = sInfo;
+	fz_locks_context LocksCtx;
+	PdfCtx->pMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
+
+	for (int i = 0; i < FZ_LOCK_MAX; i++)
+	{
+		if(myCreateMutex(&PdfCtx->pMutexes[i]) != 0)
+		{ fprintf(stderr, "Could not create mutex\n"); exit(1); }
+	}
+	LocksCtx.user = PdfCtx->pMutexes;
+	LocksCtx.lock = myLockMutex;
+	LocksCtx.unlock = myUnlockMutex;
+	/* Create a context to hold the exception stack and various caches. */
+	PdfCtx->pCtx = fz_new_context(NULL, &LocksCtx, FZ_STORE_UNLIMITED);
+	if (!PdfCtx->pCtx)
+	{
+		fprintf(stderr, "cannot create mupdf context\n"); 
+		return NULL; 
+	}
+	fz_try(PdfCtx->pCtx)
+		fz_register_document_handlers(PdfCtx->pCtx);
+	fz_catch(PdfCtx->pCtx)
+		goto myErrorHandle;
+
+	fz_try(PdfCtx->pCtx)
+		PdfCtx->pDoc = fz_open_document(PdfCtx->pCtx, pFile);
+	fz_catch(PdfCtx->pCtx)
+		goto MyErrorOpen;
+
+	fz_try(PdfCtx->pCtx)
+		PdfCtx->nbOfPages = fz_count_pages(PdfCtx->pCtx, PdfCtx->pDoc);
+	fz_catch(PdfCtx->pCtx)
+		goto myErrorCount;
+
+	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
+	PdfCtx->pDoc = NULL;
+	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
+	return PdfCtx;
+
+myErrorCount:
+	fprintf(stderr, "cannot count number of pages\n");
+	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
+	goto MyErrorEnd;
+MyErrorOpen:
+	fprintf(stderr, "cannot open document\n");
+	goto MyErrorEnd;
+myErrorHandle:
+	fprintf(stderr, "cannot register document handlers\n");
+MyErrorEnd:
+	fz_report_error(PdfCtx->pCtx);
+	fz_drop_context(PdfCtx->pCtx);
+	return NULL;
+}
+
+int
+Main(int Argc, char **ppArgv)
+{
+	Init(Argc, ppArgv, &gInst);
+	sInfo sInfo = {
+		.pageStart = Argc > 2 ? atoi(ppArgv[2]) - 1 : 1,
+		.fZoom = Argc > 3 ? atof(ppArgv[3]) : 100,
+		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
+	};
+
+	CreatePDFContext(&gPdf, ppArgv[1], sInfo);
 
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
 	if (!pdf.pTexture) return 1;
@@ -66,8 +154,12 @@ main(int argc, char **ppArgv)
 		Event(&e);
 		UpdateSmooth(factor);
 
-		// Check if it moved
-		if (!SDL_FRectEquals(&check, &gView.currentView) || gRender == 1)
+        /*
+		 * Checks if it moved
+		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
+		 * or anything else
+         */
+		if (!SDL_FRectEquals(&check, &gView.currentView) || gRender == true)
 		{
 			SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(gInst.pRenderer);
@@ -79,13 +171,24 @@ main(int argc, char **ppArgv)
 			check.y = gView.currentView.y;
 			check.w = gView.currentView.w;
 			check.h = gView.currentView.h;
-			gRender = 0;
+            /*
+			 * NOTE: Probably be better to add a mutex here as threads 
+			 * might be able to trigger it
+             */
+			gRender = false;
 		}
 	}
-	fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
-	free(pdf.ppPix);
-	fz_drop_context(pdf.pCtx);
-	SDL_DestroyTexture(pdf.pTexture);
+    /*
+	 * Loop through the pPages->pPix;
+	 * fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
+     */
+	fz_drop_context(gPdf.pCtx);
+    /*
+	 * Loop through the pPages->pTextures;
+	 * SDL_DestroyTexture();
+     */
+	free(gPdf.pPages);
+	free(gPdf.pMutexes);
 	SDL_DestroyRenderer(gInst.pRenderer);
 	SDL_DestroyWindow(gInst.pWin);
 	SDL_Quit();

@@ -9,7 +9,7 @@ CPP = clang++
 
 SRC_DIR = src
 SRC_1_DIR = src/platform
-SRC_2_DIR = src/core
+SRC_2_DIR = src/engine
 SRC_3_DIR = src/renderer
 SRC_4_DIR = src/renderer/vulkan
 

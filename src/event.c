@@ -1,5 +1,5 @@
 #include "event.h"
-#include "pdf.h"
+#include "engine/pdf.h"
 #include "gui.h"
 
 #include <SDL2/SDL_render.h>
@@ -91,22 +91,11 @@ SmoothMoveRect(int key, PDFView *pView, float factor)
 }
 
 SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
-
-typedef struct sInfo
-{
-	int		pageNbr;
-	int		pageStart;
-	float	zoom;
-	float	rotate;
-	float	dpi;
-}sInfo;
-
-
 fz_pixmap *CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
 
 /*
  * 
- * NOTE: 400 ms measured in debug mode for CreatePDFPage
+ * NOTE: 400 ms measured in debug mode for CreatePDFPage (Win11-i9-12900k-RTX3080)
  * 
  * TODO: Make it a "circular" buffer, meaning we cache a little before
  * and a little after !
@@ -116,25 +105,25 @@ NextPage(void)
 {
 	TracyCZone(ctx1, 1)
 	TracyCZoneName(ctx1, "NextPage", 1)
-	gPdf.page_nbr++;
+	gPdf.viewingPage++;
     /*
 	 * if (gPdf.page_nbr >= gPdf.page_count)
 	 * 	gPdf.page_nbr = 0;
      */
 
-	if (gPdf.page_nbr >= gPdf.total_count)
-		gPdf.page_nbr = 0;
+	if (gPdf.viewingPage >= gPdf.nbOfPages)
+		gPdf.viewingPage = 0;
 		
-	int i = gPdf.page_nbr;
+	int i = gPdf.viewingPage;
 	gRender = 1;
 	SDL_DestroyTexture(gPdf.pTexture);
-	printf("page requested is : %d/%zu\n", i, gPdf.total_count);
+	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
 	fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]);
 	sInfo sInfo = {
-		.dpi = 72,
-		.zoom = 400,
-		.rotate = 0,
-		.pageNbr = 1,
+		.fDpi = 72,
+		.fZoom = 400,
+		.fRotate = 0,
+		.nbrPages = 1,
 		.pageStart = i
 	};
 	gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
@@ -150,26 +139,26 @@ NextPage(void)
 void
 PreviousPage(void)
 {
-	gPdf.page_nbr--;
+	gPdf.viewingPage--;
     /*
 	 * if (gPdf.page_nbr <= 0)
 	 * 	gPdf.page_nbr = 0;
      */
-	if (gPdf.page_nbr <= 0)
-		gPdf.page_nbr = gPdf.total_count - 1;
+	if (gPdf.viewingPage <= 0)
+		gPdf.viewingPage = gPdf.nbOfPages - 1;
 
-	int i = gPdf.page_nbr;
-	printf("page requested is : %d/%zu\n", i, gPdf.total_count);
+	int i = gPdf.viewingPage;
+	gRender = 1;
 	SDL_DestroyTexture(gPdf.pTexture);
+	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
 	fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]);
 	sInfo sInfo = {
-		.dpi = 72,
-		.zoom = 1000,
-		.rotate = 0,
-		.pageNbr = 1,
+		.fDpi = 72,
+		.fZoom = 1000,
+		.fRotate = 0,
+		.nbrPages = 1,
 		.pageStart = i
 	};
-	gRender = 1;
 	gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
 	gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
 
@@ -181,13 +170,13 @@ PreviousPage(void)
 }
 
 
-int LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
+int LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
 
 void
 Event(SDL_Event *e)
 {
 	SDL_PollEvent(e);
-	sInfo sInfo = {.pageNbr = 5, 3, 800, 0};
+	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
 	if(e->type == SDL_QUIT) { gInst.running = 0; }
 	if(e->type == SDL_KEYDOWN) 
 	{
