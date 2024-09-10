@@ -33,16 +33,6 @@ typedef struct tData
 	typedef void* Mutex;
 #endif
 
- /* NOTE: provide function for specific pages ?.. */
-typedef struct sInfo
-{
-	int		pageNbr;
-	int		pageStart;
-	float	zoom;
-	float	rotate;
-	float	dpi;
-}sInfo;
-
 int			myCreateMutex(Mutex *pMutex);
 int			myDestroyMutex(Mutex *pMutex);
 void		myLockMutex(void *pData, int lock);
@@ -52,7 +42,7 @@ myThread	myCreateThread(tData *ptData);
 int			myDestroyThread(myThread Thread);
 void		myWaitThreads(myThread *pThreads, int threadCount);
 
-int			LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
+int			LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
 void		ThreadFail(char *pMsg);
 
 #endif // OS_THREADS_H

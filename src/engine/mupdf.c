@@ -31,8 +31,8 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	assert(pDoc);
 
 	fz_matrix ctm;
-	ctm = fz_scale(sInfo->zoom / sInfo->dpi, sInfo->zoom / sInfo->dpi);
-	ctm = fz_pre_rotate(ctm, sInfo->rotate);
+	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
+	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
 
 	TracyCZoneNC(ctx2, "LoadPage", 0x00ff00, 1)
 	pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
@@ -56,7 +56,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 #include "platform/os_threads.h"
 #define MAX_PIXMAPS 100
 
-PDF
+PDFContext
 CreatePDF(char *input, int page_number, float zoom, float rotate)
 {
 	int page_count;
@@ -65,7 +65,7 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	fz_pixmap *pix;
 	fz_matrix ctm;
 	int x, y;
-	PDF pdf = {0};
+	PDFContext pdf = {0};
 	pdf.ppPix = malloc(sizeof(fz_pixmap*) * MAX_PIXMAPS);
 	pdf.zoom = zoom;
 	pdf.rotate = rotate;
@@ -83,8 +83,8 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 			exit(1);
 		}
 	}
-	pdf.ppMutexes = pMutexes;
-	locks.user = pdf.ppMutexes;
+	pdf.pMutexes = pMutexes;
+	locks.user = pdf.pMutexes;
 	locks.lock = myLockMutex;
 	locks.unlock = myUnlockMutex;
 
@@ -133,7 +133,7 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 		fz_drop_context(ctx);
 		return pdf;
 	}
-	pdf.NbOfPages = page_count;
+	pdf.nbOfPages = page_count;
 	/* Compute a transformation matrix for the zoom and rotation desired. */
 	/* The default resolution without scaling is 72 dpi. */
 	ctm = fz_scale(zoom / 100, zoom / 100);
@@ -156,15 +156,15 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	/* fz_drop_context(ctx); */
 	pdf.ppPix[0] = pix;
 	pdf.pCtx = ctx;
-	pdf.page_count = 1;
-	pdf.ViewedPage = 1;
+	pdf.nbPagesRetrieved = 1;
+	pdf.viewingPage = 1;
 	pdf.pFile = input;
 	fz_drop_document(ctx, doc);
 	return pdf;
 }
 
 int
-LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
+LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
 {
 	tData *ptData[100];
 	myThread *ppThreads;
@@ -174,16 +174,16 @@ LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo
 	fz_rect t_bounds;
 
 	fz_matrix ctm;
-	ctm = fz_scale(sInfo.zoom / 100, sInfo.zoom / 100);
-	ctm = fz_pre_rotate(ctm, sInfo.rotate);
+	ctm = fz_scale(sInfo.fZoom / 100, sInfo.fZoom / 100);
+	ctm = fz_pre_rotate(ctm, sInfo.fRotate);
 
 	fz_var(ppThreads);
 	fz_try(pCtx)
 	{
 		count = fz_count_pages(pCtx, pDoc);
-		pdf->NbOfPages = count;
+		pdf->nbOfPages = count;
 		assert(count > 0);
-		count = count > sInfo.pageStart + sInfo.NbrPages ? sInfo.NbrPages : count; 
+		count = count > sInfo.pageStart + sInfo.nbrPages ? sInfo.nbrPages : count; 
 		assert(count < MAX_THREADS);
 		fprintf(stderr, "nbPage: %d\n", count);
 		ppThreads = malloc(sizeof(void *) * count);
@@ -242,12 +242,12 @@ LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo
 				ThreadFail("Rendering Failed\n");
 			else
 			{
-				if (pdf->page_count >= 100)
+				if (pdf->nbPagesRetrieved >= 100)
 				{
 					ThreadFail("Page_count >= 100\n");
 					exit(1);
 				}
-				pdf->ppPix[pdf->page_count++] = ptData[i]->pix; 
+				pdf->ppPix[pdf->nbPagesRetrieved++] = ptData[i]->pix; 
 			}
 			fz_drop_display_list(pCtx, ptData[i]->list);
 			free(ptData[i]);

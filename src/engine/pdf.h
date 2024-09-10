@@ -3,6 +3,7 @@
 
 #include <mupdf/fitz.h>
 #include <SDL2/SDL_rect.h>
+#include <stdbool.h>
 
 #ifdef PLATFORM_LINUX
 	typedef pthread_t myThread;
@@ -12,21 +13,36 @@
 	typedef void* Mutex;
 #endif
 
-typedef struct PDF
+/* NOTE: provide function for specific pages ?..*/
+typedef struct sInfo
 {
-	const char *pFile;
-	void *pTexture;
-	fz_context *pCtx;
-	fz_document *pDoc;
-	fz_pixmap **ppPix;
-	size_t page_count;
-	size_t total_count;
-	int size;
-	int page_nbr;
-	int zoom;
-	float rotate;
-	Mutex	*ppMutexes;
-}PDF;
+	int				pageStart;
+	int				nbrPages;
+	float			fZoom;
+	float			fRotate;
+	float			fDpi;
+}sInfo;
+
+typedef struct PDFPage
+{
+	bool			bCached;
+	sInfo			sInfo;
+	fz_pixmap		*pPix;
+	void			*pTexture;
+}PDFPage;
+
+typedef struct PDFContext
+{
+	sInfo			DefaultInfo;
+	const char		*pFile;
+	fz_context		*pCtx;
+	fz_document		*pDoc;
+	Mutex			*pMutexes; // NOTE: This should actually be pMutexes
+	PDFPage			*pPages;
+	size_t			nbPagesRetrieved;
+	size_t			nbOfPages;
+	size_t			viewingPage;
+}PDFContext;
 
 typedef struct PDFView
 {
@@ -35,9 +51,9 @@ typedef struct PDFView
 	SDL_FRect nextView;
 }PDFView;
 
-extern PDF gPdf;
+extern PDFContext gPdf;
 extern PDFView gView;
 
-PDF CreatePDF(char *pFile, int page, float zoom, float rotate);
+PDFContext CreatePDF(char *pFile, int page, float zoom, float rotate);
 
 #endif //PDF_H
