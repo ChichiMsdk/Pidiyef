@@ -21,6 +21,12 @@ PDF gPdf = {0};
 
 SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
 
+/*
+ * TODO:Don't forget to free mutexes array and destroy them !
+ * Also make sure the threads don't block the main one next time..
+ * Or separate all of them !
+ */
+
 int
 main(int argc, char **ppArgv)
 {
