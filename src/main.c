@@ -1,5 +1,5 @@
 #include "init.h"
-#include "pdf.h"
+#include "engine/pdf.h"
 #include "gui.h"
 #include "platform/os_threads.h"
 
@@ -7,8 +7,6 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-
-#define mIsSame(a, b) ((a.x == b.x && a.y == b.y) ? 1 : 0)
 
 extern int gRender;
 int gRender = false;

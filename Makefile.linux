@@ -9,7 +9,7 @@ CPP = clang++
 
 SRC_DIR = src
 SRC_1_DIR = src/platform
-SRC_2_DIR = src/core
+SRC_2_DIR = src/engine
 SRC_3_DIR = src/renderer
 SRC_4_DIR = src/renderer/vulkan
 
@@ -36,7 +36,7 @@ CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
 
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(FILES))
 OBJS := $(patsubst $(OBJ_DIR)/platform/%.o, $(OBJ_DIR)/%.o, $(OBJS))
-OBJS := $(patsubst $(OBJ_DIR)/core/%.o, $(OBJ_DIR)/%.o, $(OBJS))
+OBJS := $(patsubst $(OBJ_DIR)/engine/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 OBJS := $(patsubst $(OBJ_DIR)/renderer/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 OBJS := $(patsubst $(OBJ_DIR)/vulkan/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 

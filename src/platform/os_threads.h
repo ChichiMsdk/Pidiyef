@@ -1,7 +1,7 @@
 #ifndef OS_THREADS_H
 #define OS_THREADS_H
 
-#include "pdf.h"
+#include "engine/pdf.h"
 
 #include <stdio.h>
 #include <stdlib.h>
