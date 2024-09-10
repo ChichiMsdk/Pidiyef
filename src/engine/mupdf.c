@@ -133,7 +133,7 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 		fz_drop_context(ctx);
 		return pdf;
 	}
-	pdf.total_count = page_count;
+	pdf.NbOfPages = page_count;
 	/* Compute a transformation matrix for the zoom and rotation desired. */
 	/* The default resolution without scaling is 72 dpi. */
 	ctm = fz_scale(zoom / 100, zoom / 100);
@@ -157,7 +157,7 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	pdf.ppPix[0] = pix;
 	pdf.pCtx = ctx;
 	pdf.page_count = 1;
-	pdf.page_nbr = 1;
+	pdf.ViewedPage = 1;
 	pdf.pFile = input;
 	fz_drop_document(ctx, doc);
 	return pdf;
@@ -181,9 +181,9 @@ LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo
 	fz_try(pCtx)
 	{
 		count = fz_count_pages(pCtx, pDoc);
-		pdf->total_count = count;
+		pdf->NbOfPages = count;
 		assert(count > 0);
-		count = count > sInfo.pageStart + sInfo.pageNbr ? sInfo.pageNbr : count; 
+		count = count > sInfo.pageStart + sInfo.NbrPages ? sInfo.NbrPages : count; 
 		assert(count < MAX_THREADS);
 		fprintf(stderr, "nbPage: %d\n", count);
 		ppThreads = malloc(sizeof(void *) * count);
