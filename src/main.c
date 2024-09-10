@@ -25,9 +25,13 @@ SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_contex
 static inline void UpdateSmooth(float factor);
 
 /*
- * TODO:Don't forget to free mutexes array and destroy them !
- * Also make sure the threads don't block the main one next time..
- * Or separate all of them !
+ * TODO:
+ * - Don't forget to free mutexes array and destroy them ! (OS dependant)
+ * - Separate main rendering thread (SDL) from "engineMUPDF" one.
+ * - TimeOut least susceptible used page to free memory
+ * - Vim motions: ":" + "cmd"
+ * - Refactor the main and the way things set themselves up (separate muPDF ?)
+ * - SDL_QueryTexture() when we create a new one to udpate gView
  */
 
 int
