@@ -159,8 +159,9 @@ PreviousPage(void)
 		gPdf.page_nbr = gPdf.total_count - 1;
 
 	int i = gPdf.page_nbr;
-	printf("page requested is : %d/%zu\n", i, gPdf.total_count);
+	gRender = 1;
 	SDL_DestroyTexture(gPdf.pTexture);
+	printf("page requested is : %d/%zu\n", i, gPdf.total_count);
 	fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]);
 	sInfo sInfo = {
 		.dpi = 72,
@@ -169,7 +170,6 @@ PreviousPage(void)
 		.pageNbr = 1,
 		.pageStart = i
 	};
-	gRender = 1;
 	gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
 	gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
 
