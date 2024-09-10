@@ -106,7 +106,7 @@ fz_pixmap *CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
 
 /*
  * 
- * NOTE: 400 ms measured in debug mode for CreatePDFPage
+ * NOTE: 400 ms measured in debug mode for CreatePDFPage (Win11-i9-12900k-RTX3080)
  * 
  * TODO: Make it a "circular" buffer, meaning we cache a little before
  * and a little after !

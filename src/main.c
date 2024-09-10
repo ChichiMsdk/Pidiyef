@@ -32,6 +32,11 @@ static inline void UpdateSmooth(float factor);
  * - Vim motions: ":" + "cmd"
  * - Refactor the main and the way things set themselves up (separate muPDF ?)
  * - SDL_QueryTexture() when we create a new one to udpate gView
+ * - Wrap modifying globals with mutexes i.e: ToggleState(some global)
+ */
+
+/*	FEATURES
+ * - Bookmark a page to put it on the left (in scratch form so we can draw?)
  */
 
 int
@@ -76,7 +81,11 @@ main(int argc, char **ppArgv)
 		Event(&e);
 		UpdateSmooth(factor);
 
-		// Check if it moved
+        /*
+		 * Checks if it moved
+		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
+		 * or anything else
+         */
 		if (!SDL_FRectEquals(&check, &gView.currentView) || gRender == true)
 		{
 			SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
@@ -89,6 +98,10 @@ main(int argc, char **ppArgv)
 			check.y = gView.currentView.y;
 			check.w = gView.currentView.w;
 			check.h = gView.currentView.h;
+            /*
+			 * NOTE: Probably be better to add a mutex here as threads 
+			 * might be able to trigger it
+             */
 			gRender = false;
 		}
 	}
