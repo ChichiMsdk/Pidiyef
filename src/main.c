@@ -178,10 +178,17 @@ Main(int Argc, char **ppArgv)
 			gRender = false;
 		}
 	}
-	fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
-	free(pdf.ppPix);
-	fz_drop_context(pdf.pCtx);
-	SDL_DestroyTexture(pdf.pTexture);
+    /*
+	 * Loop through the pPages->pPix;
+	 * fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
+     */
+	fz_drop_context(gPdf.pCtx);
+    /*
+	 * Loop through the pPages->pTextures;
+	 * SDL_DestroyTexture();
+     */
+	free(gPdf.pPages);
+	free(gPdf.pMutexes);
 	SDL_DestroyRenderer(gInst.pRenderer);
 	SDL_DestroyWindow(gInst.pWin);
 	SDL_Quit();
