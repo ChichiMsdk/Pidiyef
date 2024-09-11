@@ -16,14 +16,12 @@
 // thread data
 typedef struct tData
 {
+	PDFPage				*pPage;
 	fz_context			*ctx;
-	int					pageNumber;
 	fz_display_list		*list;
 	fz_rect				bbox;
-	fz_pixmap			*pix;
 	unsigned long		id;
 	int					failed;
-
 }tData;
 
 #ifdef PLATFORM_LINUX
