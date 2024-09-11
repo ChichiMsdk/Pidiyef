@@ -50,6 +50,7 @@ PDFPage *
 LoadPagesArray(size_t nbOfPages)
 {
 	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
+	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
 	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
 	return pPages;
 }
@@ -122,6 +123,7 @@ Main(int Argc, char **ppArgv)
 		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
 	};
 
+	/* TODO: change error handling here */
 	CreatePDFContext(&gPdf, ppArgv[1], sInfo);
 
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
