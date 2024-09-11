@@ -2,6 +2,7 @@
 #include "engine/pdf.h"
 #include "gui.h"
 #include "platform/os_threads.h"
+#include "containers.h"
 
 #include <tracy/TracyC.h>
 
@@ -36,12 +37,13 @@
 /*	FEATURES
  * - Bookmark a page to put it on the left (in scratch form so we can draw?)
  */
-SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
+SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx);
 static inline void UpdateSmooth(float factor);
 
 extern int gRender;
 extern Instance gInst;
 int gRender = false;
+EventQueue gEventQueue = {0};
 Instance gInst = {.running = true, .width = 1000, .height = 700};
 PDFView gView = {0};
 PDFContext gPdf = {0};

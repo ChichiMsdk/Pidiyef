@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "init.h"
+#include "containers.h"
 
 extern Instance gInst;
 uint64_t GetNbProc(void);
@@ -39,7 +40,6 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Renderer failed!\nSDL_Error: %s\n", SDL_GetError());
 		exit(1);
 	}
-	InitPerfFreq();
 	if(SDL_RenderSetVSync(renderer, 1))
 	{
 		fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
@@ -56,4 +56,10 @@ Init(int ac, char **av, Instance *inst)
 	gInst.pRenderer = renderer;
 	gInst.pWin = window;
 	gInst.nbThreads = GetNbProc();
+	InitPerfFreq();
+	if (!InitQueue(&gEventQueue, MY_MAX_EVENTS))
+	{
+		fprintf(stderr, "Couldn not create EventQueue\n");
+		exit(1);
+	}
 }
