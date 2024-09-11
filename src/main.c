@@ -55,6 +55,9 @@ LoadPagesArray(size_t nbOfPages)
 	return pPages;
 }
 
+/*
+ * TODO: change error handling here
+ */
 void *
 CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 {
@@ -124,7 +127,10 @@ Main(int Argc, char **ppArgv)
 		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
 	};
 
-	/* TODO: change error handling here */
+    /*
+	 * NOTE: This should load the context based on the page that was last open
+	 * or on the first page if first time open
+     */
 	CreatePDFContext(&gPdf, ppArgv[1], sInfo);
 
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
@@ -202,6 +208,8 @@ Main(int Argc, char **ppArgv)
 SDL_Texture* 
 PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) 
 {
+	TracyCZone(ctx4, 1);
+	TracyCZoneName(ctx1, "PixMapToTexture", 1);
 	int width = fz_pixmap_width(pCtx, pPix);
 	int height = fz_pixmap_height(pCtx, pPix);
 	int components = fz_pixmap_components(pCtx, pPix);
@@ -228,6 +236,7 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx)
 
     if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components))
 		return NULL;
+	TracyCZoneEnd(ctx4);
     return pTexture;
 }
 
