@@ -13,6 +13,8 @@
 	typedef void* Mutex;
 #endif
 
+#define MAX_MUTEX 10
+
 /* NOTE: provide function for specific pages ?..*/
 typedef struct sInfo
 {
@@ -37,7 +39,8 @@ typedef struct PDFContext
 	const char		*pFile;
 	fz_context		*pCtx;
 	fz_document		*pDoc;
-	Mutex			*pMutexes; // NOTE: This should actually be pMutexes
+	Mutex			*pMyMutexes;
+	Mutex			*pFzMutexes;
 	PDFPage			*pPages;
 	size_t			nbPagesRetrieved;
 	size_t			nbOfPages;
