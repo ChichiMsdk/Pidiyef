@@ -16,19 +16,20 @@ SRC_4_DIR = src/renderer/vulkan
 INCLUDE_DIRS =-Isrc -IC:/Lib/SDL2/include -IC:/Lib/mupdf/include\
 	-IC:/Lib/tracy/public -IC:/Lib/tracy/public/tracy
 
-LIBS =-lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32
-	# -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dynamic-x86_64
-
+LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32\
+	   -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
+# -lclang_rt.asan_dynamic-x86_64
+#
 LIB_PATH =-LC:/Lib/SDL2/lib\
 		  -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
 
-CFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd -DPLATFORM_WINDOWS
-CFLAGS += -g -O0 -fdeclspec -MJ$(JSON_FILE)
+CFLAGS =-fms-runtime-lib=dll_dbg 
+CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
-LIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd
+LIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg
 
-CPPFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd -Wno-format
-CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd
+CPPFLAGS =-fms-runtime-lib=dll_dbg -Wno-format
+# CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd 
 
 FILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_1_DIR)/*.c)\
 		$(wildcard $(SRC_2_DIR)/*.c) $(wildcard $(SRC_3_DIR)/*.c)\
@@ -38,7 +39,7 @@ CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
 
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(FILES))
 OBJS := $(patsubst $(OBJ_DIR)/platform/%.o, $(OBJ_DIR)/%.o, $(OBJS))
-OBJS := $(patsubst $(OBJ_DIR)/core/%.o, $(OBJ_DIR)/%.o, $(OBJS))
+OBJS := $(patsubst $(OBJ_DIR)/engine/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 OBJS := $(patsubst $(OBJ_DIR)/renderer/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 OBJS := $(patsubst $(OBJ_DIR)/vulkan/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 
