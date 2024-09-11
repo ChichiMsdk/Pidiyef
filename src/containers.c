@@ -14,7 +14,7 @@ InitQueue(EventQueue *pQueue, size_t size)
 	pQueue->head = 0;
 	pQueue->tail = 0;
 	pQueue->lastPoll = GetCounter();
-	if (myCreateMutex(pQueue->mutex) != 0)
+	if (myCreateMutex(&pQueue->mutex) != 0)
 		goto FAIL;
 
 	return pQueue;
@@ -57,6 +57,8 @@ PollEvent(EventQueue *pQueue)
 	int value = -1;
 	if (GetElapsed(GetCounter(), pQueue->lastPoll) >= timeToPoll)
 	{
+		if (pQueue->head == pQueue->tail)
+			return value;
 		value = pQueue->q[pQueue->head];
 		PopEvent(pQueue);
 		pQueue->lastPoll = GetCounter();
