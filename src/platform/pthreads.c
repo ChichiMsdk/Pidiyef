@@ -1,10 +1,17 @@
 #ifdef PLATFORM_LINUX
 
 #	include "platform/os_threads.h"
+#	include <unistd.h>
 #	include <pthread.h>
 #	include <assert.h>
 
 #define MAX_THREADS 8
+
+uint64_t
+GetNbProc(void)
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
+}
 
 void
 ThreadFail(char *pMsg)
@@ -86,8 +93,8 @@ void *
 tRenderPage(void *pData)
 {
 	tData *ptData = (tData *)pData;
-	int pageNumber = ptData->pageNumber;
-	fz_context *pCtx = ptData->ctx;
+	int pageNumber = ptData->pPage->sInfo.pageStart;
+	fz_context *pCtx;
 	fz_display_list *pList = ptData->list;
 	fz_rect bbox = ptData->bbox;
 	fz_device *pDev = NULL;
@@ -97,23 +104,22 @@ tRenderPage(void *pData)
 	// The context pointer is pointing to the main thread's
 	// context, so here we create a new context based on it for
 	// use in this thread.
-	pCtx = fz_clone_context(pCtx);
+	pCtx = fz_clone_context(ptData->ctx);
 
 	// Next we run the display list through the draw device which
 	// will render the request area of the page to the pixmap.
-
 	fz_var(pDev);
 	fprintf(stderr, "thread at page %d rendering!\n", pageNumber);
 	fz_try(pCtx)
 	{
 		// Create a white pixmap using the correct dimensions.
-		ptData->pix = fz_new_pixmap_with_bbox(pCtx,
+		ptData->pPage->pPix = fz_new_pixmap_with_bbox(pCtx,
 				fz_device_rgb(pCtx), fz_round_rect(bbox), NULL, 0);
 
-		fz_clear_pixmap_with_value(pCtx, ptData->pix, 0xff);
+		fz_clear_pixmap_with_value(pCtx, ptData->pPage->pPix, 0xff);
 
 		// Do the actual rendering.
-		pDev = fz_new_draw_device(pCtx, fz_identity, ptData->pix);
+		pDev = fz_new_draw_device(pCtx, fz_identity, ptData->pPage->pPix);
 		fz_run_display_list(pCtx, pList, pDev, fz_identity, bbox, NULL);
 		fz_close_device(pCtx, pDev);
 	}
@@ -123,7 +129,8 @@ tRenderPage(void *pData)
 		ptData->failed = 1;
 
 	// Free this thread's context.
-	fz_drop_context(pCtx);
+	PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
+	fz_drop_context(ptData->ctx);
 	fprintf(stderr, "thread at page %d done!\n", pageNumber);
 	return ptData;
 }

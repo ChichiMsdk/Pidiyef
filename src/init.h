@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include "event.h"
+#include "platform/os_threads.h"
 
 typedef struct Instance
 {
@@ -13,6 +14,8 @@ typedef struct Instance
 	int				width;
 	int				height;
 	int				running;
+	int				nbThreads;
+	Mutex			*pMutexes;
 }Instance;
 
 void	Init(int argc, char **ppArgv, Instance *pInst);

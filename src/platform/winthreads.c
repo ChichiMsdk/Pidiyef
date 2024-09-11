@@ -1,6 +1,5 @@
 /* -IC:/Lib/mupdf/include -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug */
 #ifdef PLATFORM_WINDOWS
-
 #	define WIN32_LEAN_AND_MEAN
 #	define BUF_SIZE 255
 
@@ -8,8 +7,17 @@
 #	include <windows.h>
 #	include <tchar.h> // Maybe too bloated .. ?
 #	include <strsafe.h>
+#	include <sysinfoapi.h>
 
 #	include "platform/os_threads.h"
+
+uint64_t
+GetNbProc(void)
+{
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+	return sysinfo.dwNumberOfProcessors;
+}
 
 DWORD WINAPI tRenderPage(LPVOID pData);
 void ThreadFail(char *pMsg)
