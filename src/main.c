@@ -127,8 +127,6 @@ Main(int Argc, char **ppArgv)
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
 	if (!pdf.pTexture) return 1;
 
-	gPdf = pdf;
-
 	int w = 0, h = 0; 
 	SDL_QueryTexture(pdf.pTexture, NULL, NULL, &w, &h);
 	gView.currentView.w = w;
