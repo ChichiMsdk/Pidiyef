@@ -1,20 +1,11 @@
 #include "event.h"
 #include "engine/pdf.h"
 #include "gui.h"
+#include "init.h"
 
 #include <SDL2/SDL_render.h>
 #include "tracy/TracyC.h"
 
-typedef struct Instance
-{
-	SDL_Renderer	*pRenderer;
-	SDL_Window		*pWin;
-	int				width;
-	int				height;
-	int				running;
-}Instance;
-
-extern Instance gInst;
 extern PDFView gView;
 extern int gRender;
 
@@ -115,10 +106,10 @@ NextPage(void)
 		gPdf.viewingPage = 0;
 		
 	int i = gPdf.viewingPage;
-	gRender = 1;
-	SDL_DestroyTexture(gPdf.pTexture);
+	gRender = 0;
+	/* SDL_DestroyTexture(gPdf.pTexture); */
 	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
-	fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]);
+	/* fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]); */
 	sInfo sInfo = {
 		.fDpi = 72,
 		.fZoom = 400,
@@ -126,8 +117,11 @@ NextPage(void)
 		.nbrPages = 1,
 		.pageStart = i
 	};
-	gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-	gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
+    /*
+	 * gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
+     */
+
     /*
 	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[i], gPdf.pCtx);
 	 * if (!gPdf.pTexture) 
@@ -139,19 +133,26 @@ NextPage(void)
 void
 PreviousPage(void)
 {
-	gPdf.viewingPage--;
     /*
 	 * if (gPdf.page_nbr <= 0)
 	 * 	gPdf.page_nbr = 0;
      */
-	if (gPdf.viewingPage <= 0)
-		gPdf.viewingPage = gPdf.nbOfPages - 1;
+	if (gPdf.viewingPage == 0)
+	{
+		int tmp = gPdf.nbOfPages -1;
+		if (tmp >= 0)
+			gPdf.viewingPage = gPdf.nbOfPages - 1;
+		else
+			gPdf.viewingPage = 0;
+	}
+	else
+		gPdf.viewingPage--;
 
 	int i = gPdf.viewingPage;
-	gRender = 1;
-	SDL_DestroyTexture(gPdf.pTexture);
+	gRender = 0;
+	/* SDL_DestroyTexture(gPdf.pTexture); */
 	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
-	fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]);
+	/* fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]); */
 	sInfo sInfo = {
 		.fDpi = 72,
 		.fZoom = 1000,
@@ -159,8 +160,10 @@ PreviousPage(void)
 		.nbrPages = 1,
 		.pageStart = i
 	};
-	gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-	gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
+    /*
+	 * gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
+     */
 
     /*
 	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[i], gPdf.pCtx);
@@ -177,13 +180,14 @@ Event(SDL_Event *e)
 {
 	SDL_PollEvent(e);
 	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
-	if(e->type == SDL_QUIT) { gInst.running = 0; }
-	if(e->type == SDL_KEYDOWN) 
+	if(e->type == SDL_QUIT) { gInst.running = false; }
+	else if(e->type == SDL_KEYDOWN) 
 	{
 		switch (e->key.keysym.sym)
 		{
 			case (SDLK_ESCAPE):
-				gInst.running = 0; 
+				gInst.running = false; 
+				printf("running is %d\n", gInst.running); 
 				break;
 			case (SDLK_h):
 			case (SDLK_l):

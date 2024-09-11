@@ -203,14 +203,13 @@ tRenderPage(void *pData)
 	// Free this thread's context.
 	fz_drop_context(pCtx);
 	myLockMutex(gEventQueue.mutex, -1);
-	PushEvent(&gEventQueue, pageNumber);
+	PushEvent(&gEventQueue, pageNumber); //signals main thread to render texture
 	myUnlockMutex(gEventQueue.mutex, -1);
 	fprintf(stderr, "thread at page %d done!\n", pageNumber);
 	return 1;
 }
 
 #endif //PLATFORM_WINDOWS
-
 /*
 int
 LoadPixMapFromThreads(PDF *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
