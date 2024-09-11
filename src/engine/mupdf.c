@@ -184,7 +184,7 @@ LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInf
 		pdf->nbOfPages = count;
 		assert(count > 0);
 		count = count > sInfo.pageStart + sInfo.nbrPages ? sInfo.nbrPages : count; 
-		assert(count < MAX_THREADS);
+		assert(count < GetNbProc());
 		fprintf(stderr, "nbPage: %d\n", count);
 		ppThreads = malloc(sizeof(void *) * count);
 

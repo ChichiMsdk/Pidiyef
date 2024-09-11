@@ -13,6 +13,7 @@ typedef struct Instance
 	int				width;
 	int				height;
 	int				running;
+	int				nbThreads;
 }Instance;
 
 void	Init(int argc, char **ppArgv, Instance *pInst);

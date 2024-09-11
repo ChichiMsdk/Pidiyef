@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 /*
  * NOTE: Where does that even come from ?
@@ -33,6 +34,7 @@ typedef struct tData
 	typedef void* Mutex;
 #endif
 
+uint64_t	GetNbProc(void);
 int			myCreateMutex(Mutex *pMutex);
 int			myDestroyMutex(Mutex *pMutex);
 void		myLockMutex(void *pData, int lock);

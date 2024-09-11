@@ -1,10 +1,17 @@
 #ifdef PLATFORM_LINUX
 
 #	include "platform/os_threads.h"
+#	include <unistd.h>
 #	include <pthread.h>
 #	include <assert.h>
 
 #define MAX_THREADS 8
+
+uint64_t
+GetNbProc(void)
+{
+	return sysconf(_SC_NPROCESSORS_ONLN);
+}
 
 void
 ThreadFail(char *pMsg)
