@@ -9,6 +9,7 @@
 #	include <strsafe.h>
 #	include <sysinfoapi.h>
 
+#	include "containers.h"
 #	include "platform/os_threads.h"
 
 double gPCFreq = 0;
@@ -93,20 +94,38 @@ void ThreadFail(char *pMsg)
 	abort();
 }
 
+/*
+ * Locks pData[[lock]] mutex
+ * if lock == -1 then pData is not considered as an array
+ */
 void
 myUnlockMutex(void *pData, int lock)
 {
 	/* fprintf(stderr, "trying to unlock %d\n", lock); */
-	Mutex **ppMutex = (Mutex **) pData;
-	ReleaseMutex(ppMutex[lock]);
+	if (lock == -1)
+		ReleaseMutex(pData);
+	else
+	{
+		Mutex **ppMutex = (Mutex **) pData;
+		ReleaseMutex(ppMutex[lock]);
+	}
 }
 
+/*
+ * Locks pData[[lock]] mutex
+ * if lock == -1 then pData is not considered as an array
+ */
 void
 myLockMutex(void *pData, int lock)
 {
 	/* fprintf(stderr, "trying to lock %d\n", lock); */
-	Mutex **ppMutex = (Mutex **) pData;
-	WaitForSingleObject(ppMutex[lock], INFINITE);
+	if (lock == -1)
+		WaitForSingleObject(pData, INFINITE);
+	else
+	{
+		Mutex **ppMutex = (Mutex **) pData;
+		WaitForSingleObject(ppMutex[lock], INFINITE);
+	}
 }
 
 /**
@@ -183,6 +202,9 @@ tRenderPage(void *pData)
 		ptData->failed = 1;
 	// Free this thread's context.
 	fz_drop_context(pCtx);
+	myLockMutex(gEventQueue.mutex, -1);
+	PushEvent(&gEventQueue, pageNumber);
+	myUnlockMutex(gEventQueue.mutex, -1);
 	fprintf(stderr, "thread at page %d done!\n", pageNumber);
 	return 1;
 }
