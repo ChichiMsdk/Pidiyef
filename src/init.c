@@ -3,6 +3,7 @@
 #include "init.h"
 
 extern Instance gInst;
+uint64_t GetNbProc(void);
 
 void
 Init(int ac, char **av, Instance *inst)
@@ -42,7 +43,16 @@ Init(int ac, char **av, Instance *inst)
 	{
 		fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
 	}
-
+	gInst.pMutexes = malloc(sizeof(Mutex) * MAX_MUTEX);
+	for (int i = 0; i < MAX_MUTEX; i++)
+	{
+		if (myCreateMutex(&gInst.pMutexes[i]) != 0)
+		{
+			fprintf(stderr, "Could not create mutex in Init()\n");
+			exit(1);
+		}
+	}
 	gInst.pRenderer = renderer;
 	gInst.pWin = window;
+	gInst.nbThreads = GetNbProc();
 }

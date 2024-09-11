@@ -61,14 +61,14 @@ CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 	PdfCtx->pFile = pFile;
 	PdfCtx->DefaultInfo = sInfo;
 	fz_locks_context LocksCtx;
-	PdfCtx->pMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
+	PdfCtx->pFzMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
 
 	for (int i = 0; i < FZ_LOCK_MAX; i++)
 	{
-		if(myCreateMutex(&PdfCtx->pMutexes[i]) != 0)
+		if(myCreateMutex(&PdfCtx->pFzMutexes[i]) != 0)
 		{ fprintf(stderr, "Could not create mutex\n"); exit(1); }
 	}
-	LocksCtx.user = PdfCtx->pMutexes;
+	LocksCtx.user = PdfCtx->pFzMutexes;
 	LocksCtx.lock = myLockMutex;
 	LocksCtx.unlock = myUnlockMutex;
 	/* Create a context to hold the exception stack and various caches. */
@@ -96,6 +96,7 @@ CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
 	PdfCtx->pDoc = NULL;
 	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
+	PdfCtx->viewingPage = sInfo.pageStart;
 	return PdfCtx;
 
 myErrorCount:
@@ -128,8 +129,6 @@ Main(int Argc, char **ppArgv)
 
 	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
 	if (!pdf.pTexture) return 1;
-
-	gPdf = pdf;
 
 	int w = 0, h = 0; 
 	SDL_QueryTexture(pdf.pTexture, NULL, NULL, &w, &h);
@@ -190,7 +189,7 @@ Main(int Argc, char **ppArgv)
 	 * SDL_DestroyTexture();
      */
 	free(gPdf.pPages);
-	free(gPdf.pMutexes);
+	free(gPdf.pFzMutexes);
 	SDL_DestroyRenderer(gInst.pRenderer);
 	SDL_DestroyWindow(gInst.pWin);
 	SDL_Quit();

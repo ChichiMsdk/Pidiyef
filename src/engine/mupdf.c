@@ -83,8 +83,8 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 			exit(1);
 		}
 	}
-	pdf.pMutexes = pMutexes;
-	locks.user = pdf.pMutexes;
+	pdf.pFzMutexes = pMutexes;
+	locks.user = pdf.pFzMutexes;
 	locks.lock = myLockMutex;
 	locks.unlock = myUnlockMutex;
 
@@ -161,6 +161,12 @@ CreatePDF(char *input, int page_number, float zoom, float rotate)
 	pdf.pFile = input;
 	fz_drop_document(ctx, doc);
 	return pdf;
+}
+
+int
+LoadTexturesFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
+{
+
 }
 
 int
