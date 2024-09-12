@@ -133,6 +133,7 @@ ChangePage(DIRECTION direction)
 		}
 		i = gPdf.viewingPage; 
 		printf("i + 1 %d\n", i);
+		/* FIXME: sometimes this crashes  */
 		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i + 1].pPix);
 		gPdf.pPages[i + 1].pPix = NULL;
 	}
