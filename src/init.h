@@ -11,7 +11,8 @@ typedef struct Instance
 {
 	SDL_Renderer	*pRenderer;
 	SDL_Window		*pWin;
-	SDL_Window		*pLoadingTexture;
+	SDL_Texture		*pLoadingTexture;
+	SDL_Texture		*pMainTexture;
 	int				width;
 	int				height;
 	uint64_t		nbThreads;

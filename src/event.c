@@ -81,8 +81,10 @@ SmoothMoveRect(int key, PDFView *pView, float factor)
 	MoveRect(key, pView, &(pView)->nextView);
 }
 
-SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
+SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
 fz_pixmap *CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
+SDL_Texture* 
+LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
 
 /*
  * 
@@ -92,31 +94,70 @@ fz_pixmap *CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
  * and a little after !
  */
 void
-NextPage(void)
+ChangePage(DIRECTION direction)
 {
 	TracyCZone(ctx1, 1)
 	TracyCZoneName(ctx1, "NextPage", 1)
-	gPdf.viewingPage++;
-    /*
-	 * if (gPdf.page_nbr >= gPdf.page_count)
-	 * 	gPdf.page_nbr = 0;
-     */
 
-	if (gPdf.viewingPage >= gPdf.nbOfPages)
-		gPdf.viewingPage = 0;
+	int i;
+	if (direction == NEXT_P)
+	{
+		gPdf.viewingPage++;
+		if (gPdf.viewingPage >= gPdf.nbOfPages)
+			gPdf.viewingPage = 0;
+
+		i = gPdf.viewingPage; 
+		int tmp = i - 1;
+		if (tmp < 0)
+		{
+			printf("nbpage %zu\n", gPdf.nbOfPages - 1);
+			tmp = gPdf.nbOfPages -1;
+			if (tmp <= 0)
+				tmp = 0;
+		}
+		printf("tmp %d\n", tmp);
+		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[tmp].pPix);
+		gPdf.pPages[tmp].pPix = NULL;
+	}
+	else if(direction == BACK_P)
+	{
+		if (gPdf.viewingPage == 0)
+		{
+			int tmp = gPdf.nbOfPages -1;
+			if (tmp >= 0)
+				gPdf.viewingPage = gPdf.nbOfPages - 1;
+			else
+				gPdf.viewingPage = 0;
+		}
+		else
+		{
+			gPdf.viewingPage--;
+		}
+		i = gPdf.viewingPage; 
+		printf("i + 1 %d\n", i);
+		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i + 1].pPix);
+		gPdf.pPages[i + 1].pPix = NULL;
+	}
 		
-	int i = gPdf.viewingPage;
-	gRender = 0;
-	/* SDL_DestroyTexture(gPdf.pTexture); */
+	i = gPdf.viewingPage;
+	gRender = true;
 	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
-	/* fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]); */
 	sInfo sInfo = {
 		.fDpi = 72,
-		.fZoom = 400,
+		.fZoom = 100,
 		.fRotate = 0,
 		.nbrPages = 1,
 		.pageStart = i
 	};
+
+	if (!gPdf.pPages[i].pPix)
+		gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+	if (!gInst.pMainTexture)
+		gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+	gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
+	if (!gInst.pMainTexture)
+		exit(1);
+	gPdf.pPages[i].bTextureCache = true;
     /*
 	 * gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
 	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
@@ -129,49 +170,6 @@ NextPage(void)
      */
 	TracyCZoneEnd(ctx1);
 }
-
-void
-PreviousPage(void)
-{
-    /*
-	 * if (gPdf.page_nbr <= 0)
-	 * 	gPdf.page_nbr = 0;
-     */
-	if (gPdf.viewingPage == 0)
-	{
-		int tmp = gPdf.nbOfPages -1;
-		if (tmp >= 0)
-			gPdf.viewingPage = gPdf.nbOfPages - 1;
-		else
-			gPdf.viewingPage = 0;
-	}
-	else
-		gPdf.viewingPage--;
-
-	int i = gPdf.viewingPage;
-	gRender = 0;
-	/* SDL_DestroyTexture(gPdf.pTexture); */
-	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
-	/* fz_drop_pixmap(gPdf.pCtx, gPdf.ppPix[0]); */
-	sInfo sInfo = {
-		.fDpi = 72,
-		.fZoom = 1000,
-		.fRotate = 0,
-		.nbrPages = 1,
-		.pageStart = i
-	};
-    /*
-	 * gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
-     */
-
-    /*
-	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[i], gPdf.pCtx);
-	 * if (!gPdf.pTexture) 
-	 * { fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return; }
-     */
-}
-
 
 int LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
 
@@ -198,10 +196,10 @@ Event(SDL_Event *e)
 				MoveRect(e->key.keysym.sym, &gView, &gView.nextView);
 				break;
 			case (SDLK_RIGHT):
-				NextPage();
+				ChangePage(NEXT_P);
 				break;
 			case (SDLK_LEFT):
-				PreviousPage();
+				ChangePage(BACK_P);
 				break;
 			case (SDLK_3):
 				LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo);

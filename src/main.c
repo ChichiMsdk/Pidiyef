@@ -47,6 +47,9 @@ EventQueue gEventQueue = {0};
 PDFView gView = {0};
 PDFContext gPdf = {0};
 
+SDL_Texture* 
+LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
+
 int
 main(int Argc, char **ppArgv)
 {
@@ -69,9 +72,9 @@ main(int Argc, char **ppArgv)
 	 * gView.currentView.h = h;
      */
 
-	 int w = 0, h = 0; 
-	 gView.currentView.w = (float)1000 / 2;
-	 gView.currentView.h = (float)700 / 2;
+	int w = 0, h = 0; 
+	gView.currentView.w = (float)1000 / 2;
+	gView.currentView.h = (float)700 / 2;
 
 	gView.currentView.x = gInst.width / 2.0f - gView.currentView.w / 2.0f;
 	gView.currentView.y = gInst.height / 2.0f - gView.currentView.h / 2.0f;
@@ -94,7 +97,6 @@ main(int Argc, char **ppArgv)
 		Event(&e);
 		UpdateSmooth(factor);
 		UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
-
         /*
 		 * Checks if it moved
 		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
@@ -105,13 +107,19 @@ main(int Argc, char **ppArgv)
 			bool isTextureCached = gPdf.pPages[gPdf.viewingPage].bTextureCache;
 			SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(gInst.pRenderer);
-        
+
 			if (isTextureCached == true)
-				SDL_RenderCopyF(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage].pTexture,
+				SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture,
 						NULL, &gView.currentView);
+            /*
+			 * if (isTextureCached == true)
+			 * 	SDL_RenderCopyF(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage].pTexture,
+			 * 			NULL, &gView.currentView);
+             */
 			else
 			{
 				/* TODO: add default texture */
+				SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
 				SDL_Rect defaultRect = {
 					.x = gView.currentView.x,
 					.y = gView.currentView.y,

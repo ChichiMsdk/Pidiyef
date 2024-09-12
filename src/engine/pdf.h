@@ -62,6 +62,6 @@ PDFContext	CreatePDF(char *pFile, int page, float zoom, float rotate);
 void		UpdateTextures(SDL_Renderer *pRenderer, int index);
 PDFPage		*LoadPagesArray(size_t nbOfPages);
 void		*CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo);
-SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx);
+SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
 
 #endif //PDF_H

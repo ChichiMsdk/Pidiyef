@@ -10,7 +10,7 @@
 #define MAX_TEXTURES 100
 
 SDL_Texture* 
-PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx);
+PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
 
 /*
  * TODO: add mechanism to privilege creation of actually visible textures (gPdf.viewingPage)
@@ -22,7 +22,7 @@ UpdateTextures(SDL_Renderer *pRenderer, int index)
 	if (index == -1)
 		return;
 	SDL_Texture *pTmp;
-	pTmp = PixmapToTexture(pRenderer, gPdf.pPages[index].pPix, gPdf.pCtx);
+	/* pTmp = PixmapToTexture(pRenderer, gPdf.pPages[index].pPix, gPdf.pCtx); */
 	if (!pTmp)
 	{
 		fprintf(stderr, "mupdf.c:22:\t %s\n", SDL_GetError());
@@ -35,7 +35,7 @@ UpdateTextures(SDL_Renderer *pRenderer, int index)
 	 * in case it's not negligible
 	 */
 	int w = 0, h = 0; 
-	SDL_QueryTexture( gPdf.pPages[index].pTexture, NULL, NULL, &w, &h);
+	SDL_QueryTexture(gPdf.pPages[index].pTexture, NULL, NULL, &w, &h);
 	gView.currentView.w = w;
 	gView.currentView.h = h;
 }
@@ -224,7 +224,7 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
  */
 
 SDL_Texture* 
-PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) 
+LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat)
 {
 	TracyCZone(ctx4, 1);
 	TracyCZoneName(ctx1, "PixMapToTexture", 1);
@@ -241,18 +241,43 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx)
 		sdl_pixel_format = SDL_PIXELFORMAT_RGBA32;
 	else
 		return NULL;
-    SDL_Texture *pTexture = SDL_CreateTexture(pRenderer, 
-        sdl_pixel_format, 
-        SDL_TEXTUREACCESS_STATIC, 
-        width, 
-        height
-    );
+    SDL_Texture *pTexture = SDL_CreateTexture(pRenderer, sdl_pixel_format, textureFormat, width, height);
+	if (!pTexture) fprintf(stderr, "Couldn't create texture: %s\n", SDL_GetError());
 
-	if (!pTexture)
-		fprintf(stderr, "Couldn't create texture: %s\n", SDL_GetError());
+	int w = 0, h = 0;
+	SDL_QueryTexture(pTexture, NULL, NULL, &w, &h);
+	gView.currentView.w = w;
+	gView.currentView.h = h;
+	gView.nextView.w = gView.currentView.w; gView.nextView.h = gView.currentView.h;
+	gView.oldView.w = gView.currentView.w; gView.oldView.h = gView.currentView.h;
+	TracyCZoneEnd(ctx4);
+    return pTexture;
+}
 
-    if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components))
+SDL_Texture* 
+PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture) 
+{
+	TracyCZone(ctx4, 1);
+	TracyCZoneName(ctx1, "PixMapToTexture", 1);
+	void *pixels;
+	int pitch = 0;
+	int width = fz_pixmap_width(pCtx, pPix);
+	int height = fz_pixmap_height(pCtx, pPix);
+	int components = fz_pixmap_components(pCtx, pPix);
+	if (SDL_LockTexture(pTexture, NULL, &pixels, &pitch) != 0)
+	{
+		fprintf(stderr, "Failed to lock texture: %s\n", SDL_GetError());
 		return NULL;
+	}
+	unsigned char *dest = (unsigned char *)pixels;
+
+	printf("pitch %d\n", pitch);
+	printf("components %d\n", components);
+	for (int y = 0; y < height; ++y)
+		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
+
+	SDL_UnlockTexture(pTexture);
+    /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
 	TracyCZoneEnd(ctx4);
     return pTexture;
 }
@@ -264,46 +289,44 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx)
  *  NOTE: 400 ms measured in debug mode
  */
 
-/*
- * fz_pixmap *
- * CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
- * {
- * 	TracyCZoneNC(ctx3, "CreatePDFPage", 0xFF0000, 1)
- * 	fz_document *pDoc;
- * 	fz_pixmap *pPix;
- * 	fz_page *pPage;
- * 	fz_device *pDev;
- * 	fz_rect bbox;
- * 	fz_rect t_bounds;
- * 	fz_context *pCtxClone;
- * 
- * 	pCtxClone = fz_clone_context(pCtx);
- * 	pDoc = fz_open_document(pCtxClone, pFile);
- * 	assert(pDoc);
- * 
- * 	fz_matrix ctm;
- * 	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
- * 	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
- * 
- * 	TracyCZoneNC(ctx2, "LoadPage", 0x00ff00, 1)
- * 	pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
- * 	TracyCZoneEnd(ctx2);
- * 
- * 	bbox = fz_bound_page(pCtxClone, pPage);
- * 	t_bounds = fz_transform_rect(bbox, ctm);
- * 
- * 	TracyCZoneNC(ctx, "LoadPixMap", 0x00ffff, 1)
- * 	pPix = fz_new_pixmap_from_page_number(pCtxClone,pDoc, sInfo->pageStart, ctm,
- * 			fz_device_rgb(pCtxClone), 0);
- * 	TracyCZoneEnd(ctx);
- * 
- * 	fz_drop_page(pCtx, pPage);
- * 	fz_drop_document(pCtxClone, pDoc);
- * 	fz_drop_context(pCtxClone);
- * 	TracyCZoneEnd(ctx3);
- * 	return pPix;
- * }
- */
+fz_pixmap *
+CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
+{
+	TracyCZoneNC(ctx3, "CreatePDFPage", 0xFF0000, 1)
+	fz_document *pDoc;
+	fz_pixmap *pPix;
+	fz_page *pPage;
+	fz_device *pDev;
+	fz_rect bbox;
+	fz_rect t_bounds;
+	fz_context *pCtxClone;
+
+	pCtxClone = fz_clone_context(pCtx);
+	pDoc = fz_open_document(pCtxClone, pFile);
+	assert(pDoc);
+
+	fz_matrix ctm;
+	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
+	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
+
+	TracyCZoneNC(ctx2, "LoadPage", 0x00ff00, 1)
+	pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
+	TracyCZoneEnd(ctx2);
+
+	bbox = fz_bound_page(pCtxClone, pPage);
+	t_bounds = fz_transform_rect(bbox, ctm);
+
+	TracyCZoneNC(ctx, "LoadPixMap", 0x00ffff, 1)
+	pPix = fz_new_pixmap_from_page_number(pCtxClone,pDoc, sInfo->pageStart, ctm,
+			fz_device_rgb(pCtxClone), 0);
+	TracyCZoneEnd(ctx);
+
+	fz_drop_page(pCtx, pPage);
+	fz_drop_document(pCtxClone, pDoc);
+	fz_drop_context(pCtxClone);
+	TracyCZoneEnd(ctx3);
+	return pPix;
+}
 
 
 /*
