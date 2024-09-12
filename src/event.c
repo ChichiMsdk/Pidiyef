@@ -96,9 +96,7 @@ LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int tex
 void
 ChangePage(DIRECTION direction)
 {
-	TracyCZone(ctx1, 1)
-	TracyCZoneName(ctx1, "NextPage", 1)
-
+	TracyCZoneNC(ch, "NextPage", 0XFF00FF, 1)
 	int i;
 	if (direction == NEXT_P)
 	{
@@ -168,7 +166,7 @@ ChangePage(DIRECTION direction)
 	 * if (!gPdf.pTexture) 
 	 * { fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return; }
      */
-	TracyCZoneEnd(ctx1);
+	TracyCZoneEnd(ch);
 }
 
 int LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);

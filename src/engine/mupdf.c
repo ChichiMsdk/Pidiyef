@@ -227,7 +227,7 @@ SDL_Texture*
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat)
 {
 	TracyCZone(ctx4, 1);
-	TracyCZoneName(ctx1, "PixMapToTexture", 1);
+	TracyCZoneName(ctx4, "LoadTexture", 1);
 	int width = fz_pixmap_width(pCtx, pPix);
 	int height = fz_pixmap_height(pCtx, pPix);
 	int components = fz_pixmap_components(pCtx, pPix);
@@ -257,8 +257,6 @@ LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int tex
 SDL_Texture* 
 PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture) 
 {
-	TracyCZone(ctx4, 1);
-	TracyCZoneName(ctx1, "PixMapToTexture", 1);
 	void *pixels;
 	int pitch = 0;
 	int width = fz_pixmap_width(pCtx, pPix);
@@ -273,12 +271,19 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 
 	printf("pitch %d\n", pitch);
 	printf("components %d\n", components);
-	for (int y = 0; y < height; ++y)
+
+	TracyCZone(ctx2, 1);
+	TracyCZoneName(ctx2, "PixMapToTexture", 1);
+	int y = 0;
+	// TODO: vectorize dis bitch
+	for (y = 0; y < height; ++y)
 		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
+
+	printf("y:%d\n", y);
 
 	SDL_UnlockTexture(pTexture);
     /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
-	TracyCZoneEnd(ctx4);
+	TracyCZoneEnd(ctx2);
     return pTexture;
 }
 
@@ -292,7 +297,7 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 fz_pixmap *
 CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 {
-	TracyCZoneNC(ctx3, "CreatePDFPage", 0xFF0000, 1)
+	TracyCZoneNC(createpdf, "CreatePDFPage", 0xFF0000, 1)
 	fz_document *pDoc;
 	fz_pixmap *pPix;
 	fz_page *pPage;
@@ -309,22 +314,22 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
 	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
 
-	TracyCZoneNC(ctx2, "LoadPage", 0x00ff00, 1)
+	TracyCZoneNC(lp, "LoadPage", 0x00ff00, 1)
 	pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
-	TracyCZoneEnd(ctx2);
+	TracyCZoneEnd(lp);
 
 	bbox = fz_bound_page(pCtxClone, pPage);
 	t_bounds = fz_transform_rect(bbox, ctm);
 
-	TracyCZoneNC(ctx, "LoadPixMap", 0x00ffff, 1)
+	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
 	pPix = fz_new_pixmap_from_page_number(pCtxClone,pDoc, sInfo->pageStart, ctm,
 			fz_device_rgb(pCtxClone), 0);
-	TracyCZoneEnd(ctx);
+	TracyCZoneEnd(pix);
 
 	fz_drop_page(pCtx, pPage);
 	fz_drop_document(pCtxClone, pDoc);
 	fz_drop_context(pCtxClone);
-	TracyCZoneEnd(ctx3);
+	TracyCZoneEnd(createpdf);
 	return pPix;
 }
 
