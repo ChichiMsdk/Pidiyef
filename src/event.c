@@ -12,68 +12,7 @@ extern int gRender;
 #define MOVE 300.0f
 
 inline static void
-MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
-{
-	switch (key)
-	{
-		case (SDLK_h):
-			{
-				pRect->x -= MOVE; 
-				if (pRect->x <= (-1.0f * pRect->w))
-					pRect->x = (pRect->w * -1.0f);
-				break;
-			}
-		case (SDLK_l):
-			{
-				pRect->x += MOVE; 
-				if (pRect->x >= (gInst.width + pRect->w))
-					pRect->x = (gInst.width);
-				break;
-			}
-		case (SDLK_j):
-			{
-				pRect->y += MOVE; 
-				if (pRect->y >= (gInst.height))
-					pRect->y = (gInst.height);
-				break;
-			}
-		case (SDLK_k):
-			{
-				pRect->y -= MOVE; 
-				if (pRect->y <= (-1.0f * pRect->h))
-					pRect->y = (pRect->h * -1.0f);
-				break;
-			}
-		case (SDLK_1):
-			{
-				pRect->w *= 1.1f;
-				pRect->h *= 1.1f;
-				if (pRect->w >= 16000.0f || pRect->h >= 16000.0f)
-				{
-					pRect->w = 8000.0f;
-					pRect->h = 8000.0f;
-				}
-				/* printf("w:%f\th:%f\n", pRect->w, pRect->h); */
-				break;
-			}
-		case (SDLK_2):
-			{
-				pRect->w /= 1.1f;
-				pRect->h /= 1.1f;
-				if (pRect->w <= 0.5f || pRect->h <= 0.5f)
-				{
-					pRect->w = 8000.0f;
-					pRect->h = 8000.0f;
-				}
-				/* printf("w:%f\th:%f\n", pRect->w, pRect->h); */
-				break;
-			}
-	}
-	pView->oldView.x = pView->currentView.x;
-	pView->oldView.y = pView->currentView.y;
-	pView->oldView.w = pView->currentView.w;
-	pView->oldView.h = pView->currentView.h;
-}
+MoveRect(int key, PDFView *pView, SDL_FRect *pRect);
 
 inline static void
 SmoothMoveRect(int key, PDFView *pView, float factor)
@@ -86,6 +25,8 @@ fz_pixmap *CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
 SDL_Texture* 
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
 
+float gZoom = 1.0f;
+
 /*
  * 
  * NOTE: 400 ms measured in debug mode for CreatePDFPage (Win11-i9-12900k-RTX3080)
@@ -97,40 +38,25 @@ double timeToPoll2 = 99.0; //ms
 void
 ChangePage(DIRECTION direction)
 {
-	double elapsed = GetElapsed(GetCounter(), gInst.lastPoll);
-	if (elapsed < timeToPoll2)
-	{
-		/* printf("GetElapsed %f\n", elapsed); */
-		return;
-	}
-	gInst.lastPoll = GetCounter();
 	TracyCZoneNC(ch, "NextPage", 0XFF00FF, 1)
-	int i;
 	if (direction == NEXT_P)
 	{
+		int old = gPdf.viewingPage;
 		gPdf.viewingPage++;
 		if (gPdf.viewingPage >= gPdf.nbOfPages)
 			gPdf.viewingPage = 0;
 
-		i = gPdf.viewingPage; 
-		int tmp = i - 1;
-		if (tmp < 0)
+		if (gPdf.pPages[old].bPpmCache == true)
 		{
-			/* printf("nbpage %zu\n", gPdf.nbOfPages - 1); */
-			tmp = gPdf.nbOfPages -1;
-			if (tmp <= 0)
-				tmp = 0;
-		}
-		/* printf("tmp %d\n", tmp); */
-		if (gPdf.pPages[tmp].bPpmCache == true)
-		{
-			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[tmp].pPix);
-			gPdf.pPages[tmp].pPix = NULL;
-			gPdf.pPages[tmp].bPpmCache = false;
+			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[old].pPix);
+			gPdf.pPages[old].pPix = NULL;
+			gPdf.pPages[old].bPpmCache = false;
+			gPdf.pPages[old].bTextureCache = false;
 		}
 	}
 	else if(direction == BACK_P)
 	{
+		int old = gPdf.viewingPage;
 		if (gPdf.viewingPage == 0)
 		{
 			int tmp = gPdf.nbOfPages - 1;
@@ -143,39 +69,41 @@ ChangePage(DIRECTION direction)
 		{
 			gPdf.viewingPage--;
 		}
-		i = gPdf.viewingPage; 
-		/* printf("i + 1 %d\n", i); */
-		/* FIXME: sometimes this crashes  */
-		if (gPdf.pPages[i + 1].bPpmCache == true)
+		int i = gPdf.viewingPage; 
+		if (gPdf.pPages[old].bPpmCache == true && old != i)
 		{
-			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i + 1].pPix);
-			gPdf.pPages[i + 1].pPix = NULL;
-			gPdf.pPages[i + 1].bPpmCache = false;
+			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[old].pPix);
+			gPdf.pPages[old].pPix = NULL;
+			gPdf.pPages[old].bPpmCache = false;
+			gPdf.pPages[old].bTextureCache = false;
 		}
 	}
 		
-	i = gPdf.viewingPage;
-	gRender = true;
+	int i = gPdf.viewingPage;
 	/* printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages); */
 	sInfo sInfo = {
-		.fDpi = 72,
+		.fDpi = 100 * gZoom,
 		.fZoom = 100,
 		.fRotate = 0,
 		.nbrPages = 1,
 		.pageStart = i
 	};
 
-	if (!gPdf.pPages[i].pPix)
+	if (!gPdf.pPages[i].bPpmCache)
 	{
 		gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
 		gPdf.pPages[i].bPpmCache = true;
 	}
 	if (!gInst.pMainTexture)
+	{
 		gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+		gPdf.pPages[i].bTextureCache = true;
+	}
 	gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
 	if (!gInst.pMainTexture)
 		exit(1);
 	gPdf.pPages[i].bTextureCache = true;
+	gRender = true;
     /*
 	 * gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
 	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
@@ -187,6 +115,36 @@ ChangePage(DIRECTION direction)
 	 * { fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return; }
      */
 	TracyCZoneEnd(ch);
+}
+
+void
+ReloadPage(void)
+{
+	int i = gPdf.viewingPage;
+	/* printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages); */
+	sInfo sInfo = {
+		.fDpi = 100 * gZoom,
+		.fZoom = 100,
+		.fRotate = 0,
+		.nbrPages = 1,
+		.pageStart = i
+	};
+
+	if (!gPdf.pPages[i].bPpmCache)
+	{
+		gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+		gPdf.pPages[i].bPpmCache = true;
+	}
+	if (!gInst.pMainTexture)
+	{
+		gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+		gPdf.pPages[i].bTextureCache = true;
+	}
+	gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
+	if (!gInst.pMainTexture)
+		exit(1);
+	gPdf.pPages[i].bTextureCache = true;
+	gRender = true;
 }
 
 int LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
@@ -224,4 +182,100 @@ Event(SDL_Event *e)
 				break;
 		}
 	}
+}
+
+inline static void
+MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
+{
+	switch (key)
+	{
+		case (SDLK_h):
+			{
+				pRect->x -= MOVE; 
+				if (pRect->x <= (-1.0f * pRect->w))
+					pRect->x = (pRect->w * -1.0f);
+				break;
+			}
+		case (SDLK_l):
+			{
+				pRect->x += MOVE; 
+				if (pRect->x >= (gInst.width + pRect->w))
+					pRect->x = (gInst.width);
+				break;
+			}
+		case (SDLK_j):
+			{
+				pRect->y += MOVE; 
+				if (pRect->y >= (gInst.height))
+					pRect->y = (gInst.height);
+				break;
+			}
+		case (SDLK_k):
+			{
+				pRect->y -= MOVE; 
+				if (pRect->y <= (-1.0f * pRect->h))
+					pRect->y = (pRect->h * -1.0f);
+				break;
+			}
+		case (SDLK_1):
+			{
+				gZoom /=2.0f;
+				if (gZoom <= 0.12f)
+					gZoom = 0.12f;
+				if (gPdf.pPages[gPdf.viewingPage].bPpmCache)
+				{
+					fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage].pPix);
+					gPdf.pPages[gPdf.viewingPage].bPpmCache = false;
+					gPdf.pPages[gPdf.viewingPage].bTextureCache = false;
+					SDL_DestroyTexture(gInst.pMainTexture);
+					gInst.pMainTexture = NULL;
+				}
+				pRect->x = gInst.width / 4.0f;
+				gRender = true;
+				ReloadPage();
+                /*
+				 * pRect->w *= 1.1f;
+				 * pRect->h *= 1.1f;
+				 * if (pRect->w >= 16000.0f || pRect->h >= 16000.0f)
+				 * {
+				 * 	pRect->w = 8000.0f;
+				 * 	pRect->h = 8000.0f;
+				 * }
+                 */
+				/* printf("w:%f\th:%f\n", pRect->w, pRect->h); */
+				break;
+			}
+		case (SDLK_2):
+			{
+				gZoom *=2.0f;
+				if (gZoom >= 20.0f)
+					gZoom = 20.0f;
+				if (gPdf.pPages[gPdf.viewingPage].bPpmCache)
+				{
+					fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage].pPix);
+					gPdf.pPages[gPdf.viewingPage].bPpmCache = false;
+					gPdf.pPages[gPdf.viewingPage].bTextureCache = false;
+					SDL_DestroyTexture(gInst.pMainTexture);
+					gInst.pMainTexture = NULL;
+				}
+				gRender = true;
+				ReloadPage();
+				pRect->x = gInst.width / 4.0f;
+                /*
+				 * pRect->w /= 1.1f;
+				 * pRect->h /= 1.1f;
+				 * if (pRect->w <= 0.5f || pRect->h <= 0.5f)
+				 * {
+				 * 	pRect->w = 8000.0f;
+				 * 	pRect->h = 8000.0f;
+				 * }
+                 */
+				/* printf("w:%f\th:%f\n", pRect->w, pRect->h); */
+				break;
+			}
+	}
+	pView->oldView.x = pView->currentView.x;
+	pView->oldView.y = pView->currentView.y;
+	pView->oldView.w = pView->currentView.w;
+	pView->oldView.h = pView->currentView.h;
 }

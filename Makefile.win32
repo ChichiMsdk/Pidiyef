@@ -17,18 +17,27 @@ INCLUDE_DIRS =-Isrc -IC:/Lib/SDL2/include -IC:/Lib/mupdf/include\
 	-IC:/Lib/tracy/public -IC:/Lib/tracy/public/tracy
 
 LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32\
-	   -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
+	   # -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
 # -lclang_rt.asan_dynamic-x86_64
-#
+
+
 LIB_PATH =-LC:/Lib/SDL2/lib\
-		  -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
+		  -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Release
+		  # -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
 
-CFLAGS =-fms-runtime-lib=dll_dbg 
-CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
+CFLAGS =-nodefaultlibs
+# -fms-runtime-lib=dll_dbg
+CFLAGS +=-DPLATFORM_WINDOWS -g -O2 -fdeclspec -MJ$(JSON_FILE)
+# -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
-LIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg
 
-CPPFLAGS =-fms-runtime-lib=dll_dbg -Wno-format
+LIBFLAGS =-Wl,-nodefaultlib:libcmt
+#-fms-runtime-lib=dll_dbg
+
+# -fms-runtime-lib=dll_dbg
+CPPFLAGS =-O2 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs -fms-runtime-lib=dll
+# -DTRACY_ENABLE
+# CPPFLAGS =-DPLATFORM_WINDOWS -fms-runtime-lib=dll_dbg -Wno-format
 # CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd 
 
 FILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_1_DIR)/*.c)\

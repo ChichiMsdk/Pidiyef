@@ -62,4 +62,16 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Couldn not create EventQueue\n");
 		exit(1);
 	}
+
+	gView.currentView.w = (float)1000 / 2;
+	gView.currentView.h = (float)700 / 2;
+
+	gView.currentView.x = gInst.width / 2.0f - gView.currentView.w / 2.0f;
+	gView.currentView.y = gInst.height / 2.0f - gView.currentView.h / 2.0f;
+
+	gView.nextView.x = gView.currentView.x; gView.nextView.y = gView.currentView.y;
+	gView.nextView.w = gView.currentView.w; gView.nextView.h = gView.currentView.h;
+
+	gView.oldView.x = gView.currentView.x; gView.oldView.y = gView.currentView.y;
+	gView.oldView.w = gView.currentView.w; gView.oldView.h = gView.currentView.h;
 }

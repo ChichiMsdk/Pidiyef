@@ -49,13 +49,15 @@ PDFContext gPdf = {0};
 
 SDL_Texture* 
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
+void ReloadPage(void);
 
 int
 main(int Argc, char **ppArgv)
 {
 	Init(Argc, ppArgv, &gInst);
+
 	sInfo sInfo = {
-		.pageStart = Argc > 2 ? atoi(ppArgv[2]) - 1 : 1,
+		.pageStart = Argc > 2 ? atoi(ppArgv[2]) - 1 : 0,
 		.fZoom = Argc > 3 ? atof(ppArgv[3]) : 100,
 		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
 	};
@@ -72,19 +74,6 @@ main(int Argc, char **ppArgv)
 	 * gView.currentView.h = h;
      */
 
-	int w = 0, h = 0; 
-	gView.currentView.w = (float)1000 / 2;
-	gView.currentView.h = (float)700 / 2;
-
-	gView.currentView.x = gInst.width / 2.0f - gView.currentView.w / 2.0f;
-	gView.currentView.y = gInst.height / 2.0f - gView.currentView.h / 2.0f;
-
-	gView.nextView.x = gView.currentView.x; gView.nextView.y = gView.currentView.y;
-	gView.nextView.w = gView.currentView.w; gView.nextView.h = gView.currentView.h;
-
-	gView.oldView.x = gView.currentView.x; gView.oldView.y = gView.currentView.y;
-	gView.oldView.w = gView.currentView.w; gView.oldView.h = gView.currentView.h;
-
 	SDL_Event e;
 	SDL_FRect check = {-1, -1, -1, -1};
 
@@ -92,6 +81,7 @@ main(int Argc, char **ppArgv)
 	float factor = 0.4f;
 	gInst.lastPoll = GetCounter();
 
+	ReloadPage();
 	while(gInst.running)
 	{
 		TracyCFrameMark
@@ -147,6 +137,7 @@ main(int Argc, char **ppArgv)
 	 * Loop through the pPages->pPix;
 	 * fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
      */
+	fz_drop_document(gPdf.pCtx, gPdf.pDoc);
 	fz_drop_context(gPdf.pCtx);
     /*
 	 * Loop through the pPages->pTextures;

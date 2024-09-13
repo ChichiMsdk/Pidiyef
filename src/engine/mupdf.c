@@ -11,6 +11,7 @@
 #define MAX_PIXMAPS 100
 #define MAX_TEXTURES 100
 
+extern int gRender;
 SDL_Texture* 
 PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
 
@@ -32,6 +33,7 @@ UpdateTextures(SDL_Renderer *pRenderer, int index)
 	}
 	gPdf.pPages[index].pTexture = pTmp;
 	gPdf.pPages[index].bPpmCache = true;
+	gRender = true;
 	/*
 	 * TODO: Measure the time it takes to query
 	 * in case it's not negligible
@@ -97,8 +99,10 @@ CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 	fz_catch(PdfCtx->pCtx)
 		goto myErrorCount;
 
-	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	PdfCtx->pDoc = NULL;
+    /*
+	 * fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
+	 * PdfCtx->pDoc = NULL;
+     */
 	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
 	PdfCtx->viewingPage = sInfo.pageStart;
 	return PdfCtx;
@@ -300,7 +304,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 {
 	TracyCZoneNC(createpdf, "CreatePDFPage", 0xFF0000, 1)
 
-	fz_document *pDoc;
+	fz_document *pDoc = gPdf.pDoc;
 	fz_pixmap *pPix;
 	fz_page *pPage;
 	fz_device *pDev;
@@ -309,18 +313,21 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	fz_context *pCtxClone;
 
 	TracyCZoneNC(clone, "CloneContext", 0xffff00, 1)
-
-	pCtxClone = fz_clone_context(pCtx);
-
+	/* pCtxClone = fz_clone_context(pCtx); */
 	TracyCZoneEnd(clone);
 
-	TracyCZoneNC(doc, "OpenDoc", 0x0fff00, 1)
+	pCtxClone = gPdf.pCtx;
 
-	/* NOTE:Opening the document everytime ? Maybe keep it.. */
-	pDoc = fz_open_document(pCtxClone, pFile);
-	assert(pDoc);
+	/* TracyCZoneNC(doc, "OpenDoc", 0x0fff00, 1) */
 
-	TracyCZoneEnd(doc);
+	/* NOTE:Opening the document everytime ? Maybe keep it instead ..? */
+
+    /*
+	 * pDoc = fz_open_document(pCtxClone, pFile);
+	 * assert(pDoc);
+     */
+
+	/* TracyCZoneEnd(doc); */
 
 	fz_matrix ctm;
 	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
@@ -336,8 +343,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	t_bounds = fz_transform_rect(bbox, ctm);
 
 	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
-	pPix = fz_new_pixmap_from_page(pCtxClone, pPage, ctm,
-			fz_device_rgb(pCtxClone), 0);
+	pPix = fz_new_pixmap_from_page(pCtxClone, pPage, ctm, fz_device_rgb(pCtxClone), 0);
     /*
 	 * pPix = fz_new_pixmap_from_page_number(pCtxClone, pDoc, sInfo->pageStart, ctm,
 	 * 		fz_device_rgb(pCtxClone), 0);
@@ -348,14 +354,13 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	TracyCZoneNC(drop, "Dropping everything", 0x00fff0, 1)
 
 	fz_drop_page(pCtx, pPage);
-	fz_drop_document(pCtxClone, pDoc);
-	fz_drop_context(pCtxClone);
+	/* fz_drop_document(pCtxClone, pDoc); */
+	/* fz_drop_context(pCtxClone); */
 
 	TracyCZoneEnd(drop);
 	TracyCZoneEnd(createpdf);
 	return pPix;
 }
-
 
 /*
  * PDFContext
