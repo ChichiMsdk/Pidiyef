@@ -60,7 +60,9 @@ PollEvent(EventQueue *pQueue)
 		if (pQueue->head == pQueue->tail)
 			return value;
 		value = pQueue->q[pQueue->head];
+		myLockMutex(&pQueue->mutex, -1);
 		PopEvent(pQueue);
+		myUnlockMutex(&pQueue->mutex, -1);
 		pQueue->lastPoll = GetCounter();
 	}
 	return value;

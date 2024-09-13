@@ -93,7 +93,7 @@ LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int tex
  * TODO: Make it a "circular" buffer, meaning we cache a little before
  * and a little after !
  */
-double timeToPoll2 = 90.0; //ms
+double timeToPoll2 = 99.0; //ms
 void
 ChangePage(DIRECTION direction)
 {

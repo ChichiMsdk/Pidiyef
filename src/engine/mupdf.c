@@ -2,7 +2,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "platform/os_threads.h"
+#include "init.h"
 
 #include "tracy/TracyC.h"
 
@@ -22,14 +24,14 @@ UpdateTextures(SDL_Renderer *pRenderer, int index)
 	if (index == -1)
 		return;
 	SDL_Texture *pTmp;
-	/* pTmp = PixmapToTexture(pRenderer, gPdf.pPages[index].pPix, gPdf.pCtx); */
+	pTmp = PixmapToTexture(pRenderer, gPdf.pPages[index].pPix, gPdf.pCtx, pTmp);
 	if (!pTmp)
 	{
 		fprintf(stderr, "mupdf.c:22:\t %s\n", SDL_GetError());
 		exit(1); // probably should not do that ?
 	}
 	gPdf.pPages[index].pTexture = pTmp;
-	gPdf.pPages[index].bTextureCache = true;
+	gPdf.pPages[index].bPpmCache = true;
 	/*
 	 * TODO: Measure the time it takes to query
 	 * in case it's not negligible
@@ -126,7 +128,6 @@ int
 LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
 {
 	tData *ptData[100];
-	myThread *ppThreads;
 	int count = 0;
 	fz_document *pDoc = fz_open_document(pCtx, pFile);
 	assert(pDoc);
@@ -136,7 +137,7 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
 	ctm = fz_scale(sInfo.fZoom / 100, sInfo.fZoom / 100);
 	ctm = fz_pre_rotate(ctm, sInfo.fRotate);
 
-	fz_var(ppThreads);
+	fz_var(gInst.pThreads);
 	fz_try(pCtx)
 	{
 		count = fz_count_pages(pCtx, pDoc);
@@ -145,7 +146,7 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
 		count = count > sInfo.pageStart + sInfo.nbrPages ? sInfo.nbrPages : count; 
 		assert(count < GetNbProc());
 		fprintf(stderr, "nbPage: %d\n", count);
-		ppThreads = malloc(sizeof(void *) * count);
+		gInst.pThreads = malloc(sizeof(void *) * count);
 
 		for (int i = 0; i < count; i++)
 		{
@@ -185,19 +186,19 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
 			ptData[i]->failed = 0;
 			ptData[i]->id = 0;
 			
-			ppThreads[i] = myCreateThread(ptData[i]);
-			if (ppThreads[i] == (myThread)0) 
+			gInst.pThreads[i] = myCreateThread(ptData[i]);
+			if (gInst.pThreads[i] == (myThread)0) 
 			{
 				ThreadFail("CreateThread");
 				exit(1);
 			}
 		}
-		myWaitThreads(ppThreads, count);
+		myWaitThreads(gInst.pThreads, count);
 		fprintf(stderr, "MainThread leaving\n");
 		for(int i = 0; i < count; i++)
 		{
 			char pFileName[10000];
-			myDestroyThread(ppThreads[i]); // Only for WIN32 compatibility
+			myDestroyThread(gInst.pThreads[i]); // Only for WIN32 compatibility
 			if (ptData[i]->failed)
 				ThreadFail("Rendering Failed\n");
 			else
@@ -214,7 +215,7 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
 	}
 	fz_always(pCtx)
 	{
-		free(ppThreads);
+		free(gInst.pThreads);
 	}
 	fz_catch(pCtx)
 	{
@@ -274,17 +275,12 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 	}
 	unsigned char *dest = (unsigned char *)pixels;
 
-	printf("pitch %d\n", pitch);
-	printf("components %d\n", components);
-
 	TracyCZone(ctx2, 1);
 	TracyCZoneName(ctx2, "PixMapToTexture", 1);
 	int y = 0;
 	// TODO: vectorize dis bitch
 	for (y = 0; y < height; ++y)
 		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
-
-	printf("y:%d\n", y);
 
 	SDL_UnlockTexture(pTexture);
     /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
@@ -351,7 +347,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 
 	TracyCZoneNC(drop, "Dropping everything", 0x00fff0, 1)
 
-	/* fz_drop_page(pCtx, pPage); */
+	fz_drop_page(pCtx, pPage);
 	fz_drop_document(pCtxClone, pDoc);
 	fz_drop_context(pCtxClone);
 

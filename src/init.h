@@ -19,6 +19,8 @@ typedef struct Instance
 	Mutex			*pMutexes;
 	int				running;
 	uint64_t		lastPoll;
+	myThread		*pThreads;
+
 }Instance;
 
 extern Instance gInst;
