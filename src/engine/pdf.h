@@ -3,6 +3,7 @@
 
 #include <mupdf/fitz.h>
 #include <SDL2/SDL_rect.h>
+#include <SDL2/SDL_render.h>
 #include <stdbool.h>
 
 #ifdef PLATFORM_LINUX
@@ -27,7 +28,8 @@ typedef struct sInfo
 
 typedef struct PDFPage
 {
-	bool			bCached;
+	bool			bTextureCache;
+	bool			bPpmCache;
 	sInfo			sInfo;
 	fz_pixmap		*pPix;
 	void			*pTexture;
@@ -39,7 +41,6 @@ typedef struct PDFContext
 	const char		*pFile;
 	fz_context		*pCtx;
 	fz_document		*pDoc;
-	Mutex			*pMyMutexes;
 	Mutex			*pFzMutexes;
 	PDFPage			*pPages;
 	size_t			nbPagesRetrieved;
@@ -57,6 +58,10 @@ typedef struct PDFView
 extern PDFContext gPdf;
 extern PDFView gView;
 
-PDFContext CreatePDF(char *pFile, int page, float zoom, float rotate);
+PDFContext	CreatePDF(char *pFile, int page, float zoom, float rotate);
+void		UpdateTextures(SDL_Renderer *pRenderer, int index);
+PDFPage		*LoadPagesArray(size_t nbOfPages);
+void		*CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo);
+SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
 
 #endif //PDF_H

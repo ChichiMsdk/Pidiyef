@@ -11,12 +11,16 @@ typedef struct Instance
 {
 	SDL_Renderer	*pRenderer;
 	SDL_Window		*pWin;
+	SDL_Texture		*pLoadingTexture;
+	SDL_Texture		*pMainTexture;
 	int				width;
 	int				height;
-	int				running;
-	int				nbThreads;
+	uint64_t		nbThreads;
 	Mutex			*pMutexes;
+	int				running;
 }Instance;
+
+extern Instance gInst;
 
 void	Init(int argc, char **ppArgv, Instance *pInst);
 

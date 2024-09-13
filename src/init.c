@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "init.h"
+#include "containers.h"
 
 extern Instance gInst;
 uint64_t GetNbProc(void);
@@ -55,4 +56,10 @@ Init(int ac, char **av, Instance *inst)
 	gInst.pRenderer = renderer;
 	gInst.pWin = window;
 	gInst.nbThreads = GetNbProc();
+	InitPerfFreq();
+	if (!InitQueue(&gEventQueue, MY_MAX_EVENTS))
+	{
+		fprintf(stderr, "Couldn not create EventQueue\n");
+		exit(1);
+	}
 }

@@ -32,6 +32,16 @@ typedef struct tData
 	typedef void* Mutex;
 #endif
 
+// NOTE: in ms
+extern double gPCFreq;
+extern uint64_t gCounterStart;
+extern uint64_t gCounterEnd;
+extern uint64_t gStartProgram;
+
+double		GetElapsed(uint64_t endTime, uint64_t startTime);
+void		InitPerfFreq(void);
+uint64_t	GetCounter(void);
+uint64_t	StartCounter(void);
 uint64_t	GetNbProc(void);
 int			myCreateMutex(Mutex *pMutex);
 int			myDestroyMutex(Mutex *pMutex);

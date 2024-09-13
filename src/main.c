@@ -2,6 +2,7 @@
 #include "engine/pdf.h"
 #include "gui.h"
 #include "platform/os_threads.h"
+#include "containers.h"
 
 #include <tracy/TracyC.h>
 
@@ -36,86 +37,21 @@
 /*	FEATURES
  * - Bookmark a page to put it on the left (in scratch form so we can draw?)
  */
-SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) ;
 static inline void UpdateSmooth(float factor);
 
 extern int gRender;
 extern Instance gInst;
+Instance gInst = {.running = true, .width = 1000, .height = 700, .pWin = NULL, .pMutexes = NULL};
 int gRender = false;
-Instance gInst = {.running = true, .width = 1000, .height = 700};
+EventQueue gEventQueue = {0};
 PDFView gView = {0};
 PDFContext gPdf = {0};
 
-PDFPage *
-LoadPagesArray(size_t nbOfPages)
-{
-	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
-	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
-	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
-	return pPages;
-}
-
-void *
-CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
-{
-	PdfCtx->pFile = pFile;
-	PdfCtx->DefaultInfo = sInfo;
-	fz_locks_context LocksCtx;
-	PdfCtx->pFzMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
-
-	for (int i = 0; i < FZ_LOCK_MAX; i++)
-	{
-		if(myCreateMutex(&PdfCtx->pFzMutexes[i]) != 0)
-		{ fprintf(stderr, "Could not create mutex\n"); exit(1); }
-	}
-	LocksCtx.user = PdfCtx->pFzMutexes;
-	LocksCtx.lock = myLockMutex;
-	LocksCtx.unlock = myUnlockMutex;
-	/* Create a context to hold the exception stack and various caches. */
-	PdfCtx->pCtx = fz_new_context(NULL, &LocksCtx, FZ_STORE_UNLIMITED);
-	if (!PdfCtx->pCtx)
-	{
-		fprintf(stderr, "cannot create mupdf context\n"); 
-		return NULL; 
-	}
-	fz_try(PdfCtx->pCtx)
-		fz_register_document_handlers(PdfCtx->pCtx);
-	fz_catch(PdfCtx->pCtx)
-		goto myErrorHandle;
-
-	fz_try(PdfCtx->pCtx)
-		PdfCtx->pDoc = fz_open_document(PdfCtx->pCtx, pFile);
-	fz_catch(PdfCtx->pCtx)
-		goto MyErrorOpen;
-
-	fz_try(PdfCtx->pCtx)
-		PdfCtx->nbOfPages = fz_count_pages(PdfCtx->pCtx, PdfCtx->pDoc);
-	fz_catch(PdfCtx->pCtx)
-		goto myErrorCount;
-
-	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	PdfCtx->pDoc = NULL;
-	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
-	PdfCtx->viewingPage = sInfo.pageStart;
-	return PdfCtx;
-
-myErrorCount:
-	fprintf(stderr, "cannot count number of pages\n");
-	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	goto MyErrorEnd;
-MyErrorOpen:
-	fprintf(stderr, "cannot open document\n");
-	goto MyErrorEnd;
-myErrorHandle:
-	fprintf(stderr, "cannot register document handlers\n");
-MyErrorEnd:
-	fz_report_error(PdfCtx->pCtx);
-	fz_drop_context(PdfCtx->pCtx);
-	return NULL;
-}
+SDL_Texture* 
+LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
 
 int
-Main(int Argc, char **ppArgv)
+main(int Argc, char **ppArgv)
 {
 	Init(Argc, ppArgv, &gInst);
 	sInfo sInfo = {
@@ -124,16 +60,21 @@ Main(int Argc, char **ppArgv)
 		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
 	};
 
-	/* TODO: change error handling here */
+    /*
+	 * NOTE: This should load the context based on the page that was last open
+	 * or on the first page if first time open
+     */
 	CreatePDFContext(&gPdf, ppArgv[1], sInfo);
-
-	pdf.pTexture = PixmapToTexture(gInst.pRenderer, pdf.ppPix[0], pdf.pCtx);
-	if (!pdf.pTexture) return 1;
+    /*
+	 * int w = 0, h = 0; 
+	 * SDL_QueryTexture(pdf.pTexture, NULL, NULL, &w, &h);
+	 * gView.currentView.w = w;
+	 * gView.currentView.h = h;
+     */
 
 	int w = 0, h = 0; 
-	SDL_QueryTexture(pdf.pTexture, NULL, NULL, &w, &h);
-	gView.currentView.w = w;
-	gView.currentView.h = h;
+	gView.currentView.w = (float)1000 / 2;
+	gView.currentView.h = (float)700 / 2;
 
 	gView.currentView.x = gInst.width / 2.0f - gView.currentView.w / 2.0f;
 	gView.currentView.y = gInst.height / 2.0f - gView.currentView.h / 2.0f;
@@ -149,12 +90,13 @@ Main(int Argc, char **ppArgv)
 
 	int err = 0;
 	float factor = 0.4f;
+
 	while(gInst.running)
 	{
 		TracyCFrameMark
 		Event(&e);
 		UpdateSmooth(factor);
-
+		UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
         /*
 		 * Checks if it moved
 		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
@@ -162,11 +104,31 @@ Main(int Argc, char **ppArgv)
          */
 		if (!SDL_FRectEquals(&check, &gView.currentView) || gRender == true)
 		{
+			bool isTextureCached = gPdf.pPages[gPdf.viewingPage].bTextureCache;
 			SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 			SDL_RenderClear(gInst.pRenderer);
 
-			SDL_RenderCopyF(gInst.pRenderer, gPdf.pTexture, NULL, &gView.currentView);
-
+			if (isTextureCached == true)
+				SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture,
+						NULL, &gView.currentView);
+            /*
+			 * if (isTextureCached == true)
+			 * 	SDL_RenderCopyF(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage].pTexture,
+			 * 			NULL, &gView.currentView);
+             */
+			else
+			{
+				/* TODO: add default texture */
+				SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
+				SDL_Rect defaultRect = {
+					.x = gView.currentView.x,
+					.y = gView.currentView.y,
+					.w = gView.currentView.w,
+					.h = gView.currentView.h
+				};
+				SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
+			}
+        
 			SDL_RenderPresent(gInst.pRenderer);
 			check.x = gView.currentView.x;
 			check.y = gView.currentView.y;
@@ -179,6 +141,7 @@ Main(int Argc, char **ppArgv)
 			gRender = false;
 		}
 	}
+
     /*
 	 * Loop through the pPages->pPix;
 	 * fz_drop_pixmap(pdf.pCtx, pdf.ppPix[0]);
@@ -194,41 +157,6 @@ Main(int Argc, char **ppArgv)
 	SDL_DestroyWindow(gInst.pWin);
 	SDL_Quit();
 	return 0;
-}
-/*
- * NOTE: Should probable clone the ctx here since we want heavy multithreading..
- */
-
-SDL_Texture* 
-PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx) 
-{
-	int width = fz_pixmap_width(pCtx, pPix);
-	int height = fz_pixmap_height(pCtx, pPix);
-	int components = fz_pixmap_components(pCtx, pPix);
-
-	int sdl_pixel_format; // You may need to expand grayscale to RGB
-	if (components == 1) 
-		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
-	else if (components == 3) 
-		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
-	else if (components == 4)
-		sdl_pixel_format = SDL_PIXELFORMAT_RGBA32;
-	else
-		return NULL;
-    SDL_Texture *pTexture = SDL_CreateTexture(pRenderer, 
-        sdl_pixel_format, 
-        SDL_TEXTUREACCESS_STATIC, 
-        width, 
-        height
-    );
-
-	if (!pTexture)
-		fprintf(stderr, "Couldn't create texture: %s\n", SDL_GetError());
-
-
-    if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components))
-		return NULL;
-    return pTexture;
 }
 
 static inline void
