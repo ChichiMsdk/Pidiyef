@@ -11,7 +11,7 @@ typedef struct Instance
 	SDL_Window		*pWin;
 	int				width;
 	int				height;
-	int				running;
+	size_t			running;
 }Instance;
 
 extern Instance gInst;
