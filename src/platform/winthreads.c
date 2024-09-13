@@ -143,6 +143,7 @@ myCreateMutex(Mutex *pMutex)
 int
 myDestroyMutex(Mutex *pMutex)
 {
+	CloseHandle(*pMutex);
 	return 1;
 }
 

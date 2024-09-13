@@ -21,14 +21,14 @@ InitQueue(EventQueue *pQueue, size_t size)
 FAIL:
 	free(pQueue->q);
 	pQueue->q = NULL;
-	pQueue->mutex = NULL;
 	return NULL;
 }
 
 void
 DestroyQueue(EventQueue *pQueue)
 {
-	myDestroyMutex(pQueue->mutex);
+	//  NOTE: maybe im doing something stupid here
+	myDestroyMutex(&pQueue->mutex);
 	free(pQueue->q);
 }
 

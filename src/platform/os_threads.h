@@ -43,6 +43,7 @@ void		InitPerfFreq(void);
 uint64_t	GetCounter(void);
 uint64_t	StartCounter(void);
 uint64_t	GetNbProc(void);
+
 int			myCreateMutex(Mutex *pMutex);
 int			myDestroyMutex(Mutex *pMutex);
 void		myLockMutex(void *pData, int lock);
