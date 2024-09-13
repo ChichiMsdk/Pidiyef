@@ -18,6 +18,7 @@ typedef struct Instance
 	uint64_t		nbThreads;
 	Mutex			*pMutexes;
 	int				running;
+	uint64_t		lastPoll;
 }Instance;
 
 extern Instance gInst;

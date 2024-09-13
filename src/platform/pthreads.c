@@ -33,7 +33,7 @@ GetCounter(void)
 {
     struct timespec counter;
 	clock_gettime(CLOCK_MONOTONIC, &counter);
-	return counter.tv_sec / 1000;
+	return counter.tv_nsec;
 }
 /*
  * NOTE: Put in place some mechanism to check gPCFreq was init
@@ -41,7 +41,7 @@ GetCounter(void)
 double
 GetElapsed(uint64_t endTime, uint64_t startTime)
 {
-    return (endTime - startTime);
+    return ((endTime - startTime) / 1000.0 / 1000.0);
 }
 
 uint64_t

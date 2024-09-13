@@ -90,6 +90,7 @@ main(int Argc, char **ppArgv)
 
 	int err = 0;
 	float factor = 0.4f;
+	gInst.lastPoll = GetCounter();
 
 	while(gInst.running)
 	{

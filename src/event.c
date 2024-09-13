@@ -93,9 +93,17 @@ LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int tex
  * TODO: Make it a "circular" buffer, meaning we cache a little before
  * and a little after !
  */
+double timeToPoll2 = 90.0; //ms
 void
 ChangePage(DIRECTION direction)
 {
+	double elapsed = GetElapsed(GetCounter(), gInst.lastPoll);
+	if (elapsed < timeToPoll2)
+	{
+		/* printf("GetElapsed %f\n", elapsed); */
+		return;
+	}
+	gInst.lastPoll = GetCounter();
 	TracyCZoneNC(ch, "NextPage", 0XFF00FF, 1)
 	int i;
 	if (direction == NEXT_P)
@@ -108,7 +116,7 @@ ChangePage(DIRECTION direction)
 		int tmp = i - 1;
 		if (tmp < 0)
 		{
-			printf("nbpage %zu\n", gPdf.nbOfPages - 1);
+			/* printf("nbpage %zu\n", gPdf.nbOfPages - 1); */
 			tmp = gPdf.nbOfPages -1;
 			if (tmp <= 0)
 				tmp = 0;
@@ -148,7 +156,7 @@ ChangePage(DIRECTION direction)
 		
 	i = gPdf.viewingPage;
 	gRender = true;
-	printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages);
+	/* printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages); */
 	sInfo sInfo = {
 		.fDpi = 72,
 		.fZoom = 100,
