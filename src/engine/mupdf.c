@@ -46,6 +46,11 @@ LoadPagesArray(size_t nbOfPages)
 	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
 	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
 	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
+	for (int i = 0; i < nbOfPages; i++)
+	{
+		pPages[i].bPpmCache = false;
+		pPages[i].pPix = NULL;
+	}
 	return pPages;
 }
 
@@ -298,6 +303,7 @@ fz_pixmap *
 CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 {
 	TracyCZoneNC(createpdf, "CreatePDFPage", 0xFF0000, 1)
+
 	fz_document *pDoc;
 	fz_pixmap *pPix;
 	fz_page *pPage;
@@ -306,29 +312,50 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	fz_rect t_bounds;
 	fz_context *pCtxClone;
 
+	TracyCZoneNC(clone, "CloneContext", 0xffff00, 1)
+
 	pCtxClone = fz_clone_context(pCtx);
+
+	TracyCZoneEnd(clone);
+
+	TracyCZoneNC(doc, "OpenDoc", 0x0fff00, 1)
+
+	/* NOTE:Opening the document everytime ? Maybe keep it.. */
 	pDoc = fz_open_document(pCtxClone, pFile);
 	assert(pDoc);
+
+	TracyCZoneEnd(doc);
 
 	fz_matrix ctm;
 	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
 	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
 
 	TracyCZoneNC(lp, "LoadPage", 0x00ff00, 1)
+
 	pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
+
 	TracyCZoneEnd(lp);
 
 	bbox = fz_bound_page(pCtxClone, pPage);
 	t_bounds = fz_transform_rect(bbox, ctm);
 
 	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
-	pPix = fz_new_pixmap_from_page_number(pCtxClone,pDoc, sInfo->pageStart, ctm,
+	pPix = fz_new_pixmap_from_page(pCtxClone, pPage, ctm,
 			fz_device_rgb(pCtxClone), 0);
+    /*
+	 * pPix = fz_new_pixmap_from_page_number(pCtxClone, pDoc, sInfo->pageStart, ctm,
+	 * 		fz_device_rgb(pCtxClone), 0);
+     */
+
 	TracyCZoneEnd(pix);
 
-	fz_drop_page(pCtx, pPage);
+	TracyCZoneNC(drop, "Dropping everything", 0x00fff0, 1)
+
+	/* fz_drop_page(pCtx, pPage); */
 	fz_drop_document(pCtxClone, pDoc);
 	fz_drop_context(pCtxClone);
+
+	TracyCZoneEnd(drop);
 	TracyCZoneEnd(createpdf);
 	return pPix;
 }

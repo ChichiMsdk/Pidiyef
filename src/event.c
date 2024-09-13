@@ -113,15 +113,19 @@ ChangePage(DIRECTION direction)
 			if (tmp <= 0)
 				tmp = 0;
 		}
-		printf("tmp %d\n", tmp);
-		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[tmp].pPix);
-		gPdf.pPages[tmp].pPix = NULL;
+		/* printf("tmp %d\n", tmp); */
+		if (gPdf.pPages[tmp].bPpmCache == true)
+		{
+			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[tmp].pPix);
+			gPdf.pPages[tmp].pPix = NULL;
+			gPdf.pPages[tmp].bPpmCache = false;
+		}
 	}
 	else if(direction == BACK_P)
 	{
 		if (gPdf.viewingPage == 0)
 		{
-			int tmp = gPdf.nbOfPages -1;
+			int tmp = gPdf.nbOfPages - 1;
 			if (tmp >= 0)
 				gPdf.viewingPage = gPdf.nbOfPages - 1;
 			else
@@ -132,10 +136,14 @@ ChangePage(DIRECTION direction)
 			gPdf.viewingPage--;
 		}
 		i = gPdf.viewingPage; 
-		printf("i + 1 %d\n", i);
+		/* printf("i + 1 %d\n", i); */
 		/* FIXME: sometimes this crashes  */
-		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i + 1].pPix);
-		gPdf.pPages[i + 1].pPix = NULL;
+		if (gPdf.pPages[i + 1].bPpmCache == true)
+		{
+			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i + 1].pPix);
+			gPdf.pPages[i + 1].pPix = NULL;
+			gPdf.pPages[i + 1].bPpmCache = false;
+		}
 	}
 		
 	i = gPdf.viewingPage;
@@ -150,7 +158,10 @@ ChangePage(DIRECTION direction)
 	};
 
 	if (!gPdf.pPages[i].pPix)
+	{
 		gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+		gPdf.pPages[i].bPpmCache = true;
+	}
 	if (!gInst.pMainTexture)
 		gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
 	gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
