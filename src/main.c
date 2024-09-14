@@ -47,9 +47,20 @@ EventQueue gEventQueue = {0};
 PDFView gView = {0};
 PDFContext gPdf = {0};
 
+#define MAX_TEXTURE_ARRAY_SIZE 100
+
+typedef struct TextureArray
+{
+	SDL_Texture *ppTexture[MAX_TEXTURE_ARRAY_SIZE];
+	size_t first;
+	size_t last;
+	size_t currentSize;
+}TextureArray;
+
 SDL_Texture* 
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
 void ReloadPage(void);
+fz_pixmap * CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
 
 int
 main(int Argc, char **ppArgv)
@@ -67,12 +78,6 @@ main(int Argc, char **ppArgv)
 	 * or on the first page if first time open
      */
 	CreatePDFContext(&gPdf, ppArgv[1], sInfo);
-    /*
-	 * int w = 0, h = 0; 
-	 * SDL_QueryTexture(pdf.pTexture, NULL, NULL, &w, &h);
-	 * gView.currentView.w = w;
-	 * gView.currentView.h = h;
-     */
 
 	SDL_Event e;
 	SDL_FRect check = {-1, -1, -1, -1};
@@ -81,7 +86,164 @@ main(int Argc, char **ppArgv)
 	float factor = 0.4f;
 	gInst.lastPoll = GetCounter();
 
-	ReloadPage();
+	// Load the very first page
+	/* ReloadPage(); */
+	struct TextureArray ta = {0};
+	// Loads the viewed textures
+	for (int i = 0; i < 3; i++)
+	{
+		sInfo.pageStart = gPdf.viewingPage + i;
+		sInfo.nbrPages = 1;
+		sInfo.fZoom = 100;
+		sInfo.fDpi = 100;
+		sInfo.fRotate = 0;
+
+		gPdf.pPages[gPdf.viewingPage + i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+		gPdf.pPages[i].bPpmCache = true;
+		ta.ppTexture[i] = 
+			LoadTextures(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage + i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+		ta.ppTexture[i] = 
+			PixmapToTexture(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage + i].pPix, gPdf.pCtx, ta.ppTexture[i]);
+		ta.currentSize++;
+	}
+	int mode = 0;
+	int z = 0;
+	int old = 0;
+	uint64_t startTime = GetCounter();
+	uint64_t timer = GetCounter();
+	int count = 0;
+	uint64_t jump = 0;
+	float max = 0;
+	int incr = -900;
+	bool stop = false;
+	double timing = 1;
+	while(gInst.running)
+	{
+		SDL_PollEvent(&e); 
+		if (e.type == SDL_QUIT) exit(1); 
+		else if (e.type == SDL_KEYDOWN)
+		{ 
+			if (e.key.keysym.sym == SDLK_ESCAPE) { exit(1);}
+			else if (e.key.keysym.sym == SDLK_UP) { incr = 900; printf("Down\n");}
+			else if (e.key.keysym.sym == SDLK_DOWN) { incr = -900; printf("Up\n");}
+			else if (e.key.keysym.sym == SDLK_SPACE) { stop = !stop; printf("stop is %d\n", stop);}
+			else if (e.key.keysym.sym == SDLK_RIGHT) { timing -= 0.1; if (timing <= 0) timing = 1; printf("%f\n", timing);}
+			else if (e.key.keysym.sym == SDLK_LEFT) { timing += 0.1; if (timing >= 1000) timing = 1000; printf("%f\n", timing);}
+			else if (e.key.keysym.sym == SDLK_SEMICOLON) { mode = 2; }
+			else if (mode == 2)
+			{
+				switch (e.key.keysym.sym)
+				{
+					case (SDLK_0): jump = jump * 10 + 0; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_1): jump = jump * 10 + 1; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_2): jump = jump * 10 + 2; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_3): jump = jump * 10 + 3; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_4): jump = jump * 10 + 4; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_5): jump = jump * 10 + 5; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_6): jump = jump * 10 + 6; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_7): jump = jump * 10 + 7; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_8): jump = jump * 10 + 8; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_9): jump = jump * 10 + 9; printf(":%zu\n", jump); if (jump >= 1000000) jump = 0; break;
+					case (SDLK_RETURN):
+						mode = 0;
+						printf("jumping to: %zu\n", jump);
+						if (jump < gPdf.nbOfPages)
+						{
+							for (int i = 0; i < 3; i++)
+								fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage + i].pPix);
+							gPdf.viewingPage = jump;
+						}
+						jump = 0;
+						break;
+				}
+			}
+			else
+				printf("%d\n", e.key.keysym.sym);
+		}
+		else if (e.type == SDL_MOUSEWHEEL)
+		{
+			if (e.wheel.y > 0) { z += 300;}
+			else if (e.wheel.y < 0) { z -= 300;}
+		}
+
+		SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
+		SDL_RenderClear(gInst.pRenderer);
+
+		if (z > 0 && z % 900 == 0 && z != 0 && gPdf.viewingPage > 0)
+		{
+			z = 0;
+			for (int i = 0; i < 3; i++)
+				fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage + i].pPix);
+			gPdf.viewingPage--;
+			for (int i = 0; i < 3; i++)
+			{
+				sInfo.pageStart = gPdf.viewingPage + i;
+				sInfo.nbrPages = 1;
+				sInfo.fZoom = 100;
+				sInfo.fDpi = 100;
+				sInfo.fRotate = 0;
+
+				gPdf.pPages[gPdf.viewingPage + i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+				gPdf.pPages[i].bPpmCache = true;
+				ta.ppTexture[i] = 
+					PixmapToTexture(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage + i].pPix, gPdf.pCtx, ta.ppTexture[i]);
+				ta.currentSize++;
+			}
+		}
+		else if (z % 900 == 0 && z != 0)
+		{
+			z = 0;
+			for (int i = 0; i < 3; i++)
+				fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage + i].pPix);
+			gPdf.viewingPage++;
+			for (int i = 0; i < 3; i++)
+			{
+				sInfo.pageStart = gPdf.viewingPage + i;
+				sInfo.nbrPages = 1;
+				sInfo.fZoom = 100;
+				sInfo.fDpi = 100;
+				sInfo.fRotate = 0;
+
+				gPdf.pPages[gPdf.viewingPage + i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+				gPdf.pPages[i].bPpmCache = true;
+				ta.ppTexture[i] = 
+					PixmapToTexture(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage + i].pPix, gPdf.pCtx, ta.ppTexture[i]);
+				ta.currentSize++;
+			}
+		}
+		for (int i = 0; i < 3; i++)
+		{
+			SDL_FRect view = gView.currentView;
+			view.y = SDL_fmodf(((view.h + 20)* i) + z, (float)3 * view.h);
+
+			/* if (z != old) { printf("%d\n", z); old = z; } */
+			if (max < view.y)
+			{
+				max = view.y;
+				printf("max: %f\n", max);
+			}
+			SDL_RenderCopyF(gInst.pRenderer, ta.ppTexture[i], NULL, &view);
+		}
+		double elapsed = GetElapsed(GetCounter(), startTime);
+		if (elapsed >= timing && stop)
+		{
+			startTime = GetCounter();
+			z += incr;
+		} 
+		if (mode == 2)
+		{
+			SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
+			SDL_Rect defaultRect = {
+				.x = gView.currentView.x,
+				.y = gView.currentView.y,
+				.w = gView.currentView.w,
+				.h = gView.currentView.h
+			};
+			SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
+		}
+		SDL_RenderPresent(gInst.pRenderer);
+	}
+	exit(1);
 	while(gInst.running)
 	{
 		TracyCFrameMark
