@@ -24,6 +24,7 @@ SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_contex
 fz_pixmap *CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
 SDL_Texture* 
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
+void ReloadPage(void);
 
 float gZoom = 1.0f;
 
@@ -78,42 +79,7 @@ ChangePage(DIRECTION direction)
 			gPdf.pPages[old].bTextureCache = false;
 		}
 	}
-		
-	int i = gPdf.viewingPage;
-	/* printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages); */
-	sInfo sInfo = {
-		.fDpi = 100 * gZoom,
-		.fZoom = 100,
-		.fRotate = 0,
-		.nbrPages = 1,
-		.pageStart = i
-	};
-
-	if (!gPdf.pPages[i].bPpmCache)
-	{
-		gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-		gPdf.pPages[i].bPpmCache = true;
-	}
-	if (!gInst.pMainTexture)
-	{
-		gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
-		gPdf.pPages[i].bTextureCache = true;
-	}
-	gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
-	if (!gInst.pMainTexture)
-		exit(1);
-	gPdf.pPages[i].bTextureCache = true;
-	gRender = true;
-    /*
-	 * gPdf.ppPix[0] = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[0], gPdf.pCtx);
-     */
-
-    /*
-	 * gPdf.pTexture = PixmapToTexture(gInst.pRenderer, gPdf.ppPix[i], gPdf.pCtx);
-	 * if (!gPdf.pTexture) 
-	 * { fprintf(stderr, "Failed: PixMapToTexture: %s\n", SDL_GetError()); return; }
-     */
+	ReloadPage();
 	TracyCZoneEnd(ch);
 }
 
@@ -154,8 +120,12 @@ Event(SDL_Event *e)
 {
 	SDL_PollEvent(e);
 	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
-	if(e->type == SDL_QUIT) { gInst.running = false; }
-	else if(e->type == SDL_KEYDOWN) 
+	if (e->type == SDL_QUIT) { gInst.running = false; }
+	if (e->type == SDL_WINDOWEVENT_ENTER || e->type == SDL_WINDOWEVENT_LEAVE)
+	{
+		gRender = true;
+	}
+	else if (e->type == SDL_KEYDOWN) 
 	{
 		switch (e->key.keysym.sym)
 		{
@@ -181,6 +151,13 @@ Event(SDL_Event *e)
 				LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo);
 				break;
 		}
+	}
+	else if (e->type == SDL_MOUSEWHEEL)
+	{
+		if (e->wheel.y > 0)
+			ChangePage(BACK_P);
+		else if (e->wheel.y < 0)
+			ChangePage(NEXT_P);
 	}
 }
 

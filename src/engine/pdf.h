@@ -33,6 +33,7 @@ typedef struct PDFPage
 	sInfo			sInfo;
 	fz_pixmap		*pPix;
 	void			*pTexture;
+	fz_rect			bbox;
 }PDFPage;
 
 typedef struct PDFContext
