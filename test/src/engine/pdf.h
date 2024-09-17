@@ -34,8 +34,6 @@ typedef struct PDFPage
 	fz_pixmap		*pPix;
 	void			*pTexture;
 	fz_rect			bbox;
-	SDL_FRect		position;
-	SDL_FRect		views[3];
 }PDFPage;
 
 typedef struct PDFContext

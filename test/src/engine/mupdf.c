@@ -50,19 +50,10 @@ LoadPagesArray(size_t nbOfPages)
 	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
 	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
 	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
-	int width = 210;
-	int height = 297;
-	int gap = 20;
 	for (int i = 0; i < nbOfPages; i++)
 	{
 		pPages[i].bPpmCache = false;
 		pPages[i].pPix = NULL;
-		pPages[i].position.w = width;
-		pPages[i].position.h = height;
-		pPages[i].position.x = (gInst.width / 2.0f) - (width / 2);
-		pPages[i].position.y = (i * (height + gap));
-		for (int j = 0; j < 3; j++)
-			pPages[i].views[j] = pPages[i].position;
 	}
 	return pPages;
 }

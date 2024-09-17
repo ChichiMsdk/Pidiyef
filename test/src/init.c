@@ -9,16 +9,6 @@ uint64_t GetNbProc(void);
 void
 Init(int ac, char **av, Instance *inst)
 {
-	if (ac < 3)
-	{
-		fprintf(stderr, "usage: example input-file page-number [ zoom [ rotate ] ]\n");
-		fprintf(stderr, "\tinput-file: path of PDF, XPS, CBZ or EPUB document to open\n");
-		fprintf(stderr, "\tPage numbering starts from one.\n");
-		fprintf(stderr, "\tZoom level is in percent (100 percent is 72 dpi).\n");
-		fprintf(stderr, "\tRotation is in degrees clockwise.\n");
-		return;
-	}
-
     if(SDL_Init(SDL_INIT_VIDEO) < 0) 
 	{
         printf("SDLfailed!\nSDL_Error: %s\n", SDL_GetError());
@@ -62,17 +52,4 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Couldn not create EventQueue\n");
 		exit(1);
 	}
-
-	gView3.currentView.w = (float)1000 / 2;
-	gView3.currentView.h = (float)700 / 2;
-
-	gView3.currentView.x = gInst.width / 2.0f - gView3.currentView.w / 2.0f;
-	gView3.currentView.y = gInst.height / 2.0f - gView3.currentView.h / 2.0f;
-
-	gView3.nextView.x = gView3.currentView.x; gView3.nextView.y = gView3.currentView.y;
-	gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
-
-	gView3.oldView.x = gView3.currentView.x; gView3.oldView.y = gView3.currentView.y;
-	gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
-
 }

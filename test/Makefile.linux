@@ -1,5 +1,5 @@
 NAME = pdf
-EXTENSION = .exe
+EXTENSION =
 OUTPUT = $(NAME)$(EXTENSION)
 BUILD_DIR = build
 OBJ_DIR = build/obj
@@ -13,39 +13,26 @@ SRC_2_DIR = src/engine
 SRC_3_DIR = src/renderer
 SRC_4_DIR = src/renderer/vulkan
 
-INCLUDE_DIRS =-Isrc -IC:/Lib/SDL2/include -IC:/Lib/mupdf/include\
-	-IC:/Lib/tracy/public -IC:/Lib/tracy/public/tracy
+INCLUDE_DIRS =-Isrc -I/home/chichi/git/tracy/public\
+			  -I/home/chichi/git/tracy/public/tracy
 
-LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32\
-	   -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
-# -lclang_rt.asan_dynamic-x86_64
+LIBS =-lSDL2main -lSDL2 -lSDL2_image -lmupdf -lmupdf-third -lpthread -lm
+CPPLIBS = -lstdc++
 
+LIB_PATH =
 
-LIB_PATH =-LC:/Lib/SDL2/lib\
-		  -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Release
-		  # -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Profiler
-		  # -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
-
-CFLAGS =-nodefaultlibs
-# -fms-runtime-lib=dll_dbg
-CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
-# -DTRACY_ENABLE
+CFLAGS =-DPLATFORM_LINUX
+# -fsanitize=address -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
-LIBFLAGS =-Wl,-nodefaultlib:libcmt
-#-fms-runtime-lib=dll_dbg
-
-# -fms-runtime-lib=dll_dbg
-CPPFLAGS =-O0 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs -fms-runtime-lib=dll
-# -DTRACY_ENABLE
-# CPPFLAGS =-DPLATFORM_WINDOWS -fms-runtime-lib=dll_dbg -Wno-format
-# CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd 
+CFLAGS += -g3 -O0 -fdeclspec -MJ$(JSON_FILE)
+CPPFLAGS =-DTRACY_ENABLE -Wno-format
 
 FILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_1_DIR)/*.c)\
 		$(wildcard $(SRC_2_DIR)/*.c) $(wildcard $(SRC_3_DIR)/*.c)\
 		$(wildcard $(SRC_4_DIR)/*.c)
 
-# CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
+CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
 
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(FILES))
 OBJS := $(patsubst $(OBJ_DIR)/platform/%.o, $(OBJ_DIR)/%.o, $(OBJS))
@@ -55,10 +42,10 @@ OBJS := $(patsubst $(OBJ_DIR)/vulkan/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 
 CPP_OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(CPP_FILES))
 
-all: $(OBJ_DIR) $(BUILD_DIR)/$(OUTPUT) compile_commands.json
+all: $(BUILD_DIR)/$(OUTPUT) compile_commands.json
 
 $(BUILD_DIR)/$(OUTPUT): $(OBJS) $(CPP_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIBFLAGS) $(CPPLIBFLAGS) $(INCLUDE_DIRS) $(LIB_PATH) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(INCLUDE_DIRS) $(LIB_PATH) $(LIBS) $(CPPLIBS)
 	@rm -f $(JSON_FILE)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp

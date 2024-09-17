@@ -6,7 +6,7 @@
 #include <SDL2/SDL_render.h>
 #include "tracy/TracyC.h"
 
-extern PDFView gView;
+extern PDFView gView3;
 extern int gRender;
 
 #define MOVE 300.0f
@@ -26,7 +26,7 @@ SDL_Texture*
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
 void ReloadPage(void);
 
-float gZoom = 1.0f;
+extern float gZoom;
 
 /*
  * 
@@ -139,7 +139,7 @@ Event(SDL_Event *e)
 			case (SDLK_k):
 			case (SDLK_1):
 			case (SDLK_2):
-				MoveRect(e->key.keysym.sym, &gView, &gView.nextView);
+				MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView);
 				break;
 			case (SDLK_RIGHT):
 				ChangePage(NEXT_P);
