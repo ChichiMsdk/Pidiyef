@@ -24,11 +24,12 @@ Init(int ac, char **av, Instance *inst)
         printf("SDLfailed!\nSDL_Error: %s\n", SDL_GetError());
         exit(1);
     }
+	// Either VSYNC or Vulkan causes problems
 	SDL_Window *window = SDL_CreateWindow( "Pdf Viewer",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			gInst.width , gInst.height,
-			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
+			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
 	if (!window)
 	{
 		fprintf(stderr, "Window failed\nSDL_Error: %s\n", SDL_GetError()); 
@@ -40,10 +41,12 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Renderer failed!\nSDL_Error: %s\n", SDL_GetError());
 		exit(1);
 	}
-	if(SDL_RenderSetVSync(renderer, 1))
-	{
-		fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
-	}
+    /*
+	 * if(SDL_RenderSetVSync(renderer, 1))
+	 * {
+	 * 	fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
+	 * }
+     */
 	gInst.pMutexes = malloc(sizeof(Mutex) * MAX_MUTEX);
 	for (int i = 0; i < MAX_MUTEX; i++)
 	{

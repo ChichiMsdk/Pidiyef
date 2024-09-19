@@ -56,10 +56,12 @@ LoadPagesArray(size_t nbOfPages)
 	for (int i = 0; i < nbOfPages; i++)
 	{
 		pPages[i].bPpmCache = false;
+		pPages[i].bTextureCache = false;
+		pPages[i].pTexture = NULL;
 		pPages[i].pPix = NULL;
 		pPages[i].position.w = width;
 		pPages[i].position.h = height;
-		pPages[i].position.x = (gInst.width / 2.0f) - (width / 2);
+		pPages[i].position.x = (gInst.width / 2.0f) - (width / 2.0f);
 		pPages[i].position.y = (i * (height + gap));
 		for (int j = 0; j < 3; j++)
 			pPages[i].views[j] = pPages[i].position;
@@ -281,6 +283,7 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 	int width = fz_pixmap_width(pCtx, pPix);
 	int height = fz_pixmap_height(pCtx, pPix);
 	int components = fz_pixmap_components(pCtx, pPix);
+
 	if (SDL_LockTexture(pTexture, NULL, &pixels, &pitch) != 0)
 	{
 		fprintf(stderr, "Failed to lock texture: %s\n", SDL_GetError());
@@ -344,7 +347,15 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 
 	TracyCZoneNC(lp, "LoadPage", 0x00ff00, 1)
 
-	pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
+	fz_try(pCtx)
+		pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
+	fz_catch(pCtx)
+	{
+		fz_report_error(pCtx);
+		fprintf(stderr, "Cannot load the page\n");
+		fprintf(stderr, "Info: zoom: %f\tDpi: %f\tFile: %s\n", sInfo->fZoom, sInfo->fDpi, pFile);
+		exit(1);
+	}
 
 	TracyCZoneEnd(lp);
 
