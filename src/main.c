@@ -1,3 +1,5 @@
+const char* __asan_default_options() { return "detect_leaks=0"; }
+
 #include "init.h"
 #include "engine/pdf.h"
 #include "gui.h"
@@ -94,6 +96,7 @@ event(SDL_Event *es)
 	const uint8_t *arr = SDL_GetKeyboardState(&num);
 
 	if (e.type == SDL_QUIT) exit(1); 
+	// reset the page's positions
 	else if (e.type == SDL_WINDOWEVENT_RESIZED || e.type == SDL_WINDOWEVENT_SIZE_CHANGED) { SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.height); printf("%d\t%d\n", gInst.width, gInst.height); }
 	else if (e.type == SDL_KEYDOWN)
 	{ 
@@ -145,16 +148,16 @@ event(SDL_Event *es)
 		 * else if (e.wheel.y < 0) { gview.y += 50; if (gview.y > 4000000000.0f) gview.y = 0.0f;} 
          */
 		zoom_world(e.wheel);
-		SDL_DestroyTexture(gInst.pMainTexture);
-		gInst.pMainTexture = NULL;
+
+		// Because risizing
 		for (int i = 0; i < gVisible.count; i++)
 		{
-			sInfo sInfo = { .fDpi = 50 / fscalex, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = gVisible.array[i] };
+			SDL_DestroyTexture(gInst.ppTextArray[i]);
+			gInst.ppTextArray[i] = NULL;
 			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gVisible.array[i]].pPix);
-			gPdf.pPages[gVisible.array[i]].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-			gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[gVisible.array[i]].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
-			gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[gVisible.array[i]].pPix, gPdf.pCtx, gInst.pMainTexture);
-			gPdf.pPages[gVisible.array[i]].bTextureCache = true;
+			gPdf.pPages[gVisible.array[i]].pPix = NULL;
+			gPdf.pPages[gVisible.array[i]].bTextureCache = false;
+			gPdf.pPages[gVisible.array[i]].bPpmCache = false;
 		}
 	}
 }
@@ -178,6 +181,11 @@ main(int Argc, char **ppArgv)
 	// Load the very first page
 	ReloadPage();
 
+	gInst.ppTextArray = malloc(sizeof(SDL_Texture *) * 20);
+
+	for (int i = 0; i < 20; i++)
+		gInst.ppTextArray[i] = NULL;
+
 	SDL_Event e;
 	SDL_FRect check = {-1, -1, -1, -1};
 
@@ -199,38 +207,42 @@ main(int Argc, char **ppArgv)
 	double timing = 15;
 	bool redraw = false;
 	int num = 0;
-	for (int i = 0; i < 4; i++)
-	{
-		gView3.currentView2[i].x = gView3.currentView.x; gView3.currentView2[i].w = gView3.currentView.w;
-		gView3.currentView2[i].h = gView3.currentView.h;
-
-		gView3.nextView2[i].x = gView3.nextView.x; gView3.nextView2[i].w = gView3.nextView.w;
-		gView3.nextView2[i].h = gView3.nextView.h;
-
-		gView3.oldView2[i].x = gView3.oldView.x; gView3.oldView2[i].w = gView3.oldView.w;
-		gView3.oldView2[i].h = gView3.oldView.h;
-
-		int bord = 0;
-		gView3.currentView2[i].y = SDL_fmodf(((gView3.currentView2[i].h + bord)* i) + z, (float)4 * gView3.currentView.h);
-		gView3.nextView2[i].y = SDL_fmodf(((gView3.currentView2[i].h + bord)* i) + z, (float)4 * gView3.currentView.h);
-		gView3.oldView2[i].y = SDL_fmodf(((gView3.currentView2[i].h + bord)* i) + z, (float)4 * gView3.currentView.h);
-	}
+		/*
+		 * for (int i = 0; i < 4; i++)
+		 * {
+		 * 	gView3.currentView2[i].x = gView3.currentView.x; gView3.currentView2[i].w = gView3.currentView.w;
+		 * 	gView3.currentView2[i].h = gView3.currentView.h;
+		 * 
+		 * 	gView3.nextView2[i].x = gView3.nextView.x; gView3.nextView2[i].w = gView3.nextView.w;
+		 * 	gView3.nextView2[i].h = gView3.nextView.h;
+		 * 
+		 * 	gView3.oldView2[i].x = gView3.oldView.x; gView3.oldView2[i].w = gView3.oldView.w;
+		 * 	gView3.oldView2[i].h = gView3.oldView.h;
+		 * 
+		 * 	int bord = 0;
+		 * 	gView3.currentView2[i].y = SDL_fmodf(((gView3.currentView2[i].h + bord)* i) + z, (float)4 * gView3.currentView.h);
+		 * 	gView3.nextView2[i].y = SDL_fmodf(((gView3.currentView2[i].h + bord)* i) + z, (float)4 * gView3.currentView.h);
+		 * 	gView3.oldView2[i].y = SDL_fmodf(((gView3.currentView2[i].h + bord)* i) + z, (float)4 * gView3.currentView.h);
+		 * }
+		 */
 	while(gInst.running)
 	{
 		TracyCFrameMark
-		/* Event(&e); */
 		event(&e);
-		/* UpdateSmooth(factor); */
-		UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
+		SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
+		SDL_RenderClear(gInst.pRenderer);
+		MegaLoop();
+		SDL_RenderPresent(gInst.pRenderer);
+        /*
+		 * Event(&e);
+		 * UpdateSmooth(factor);
+		 * UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
+         */
         /*
 		 * Checks if it moved
 		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
 		 * or anything else
          */
-		SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
-		SDL_RenderClear(gInst.pRenderer);
-		MegaLoop();
-		SDL_RenderPresent(gInst.pRenderer);
 			/*
 			 * if (!SDL_FRectEquals(&check, &gView3.currentView) || gRender == true)
 			 * {
@@ -344,25 +356,36 @@ MegaLoop(void)
 		{
 			gVisible.array[gVisible.count] = i;
 			gVisible.count++;
+			// index for the text array
+			int z = gVisible.count - 1;
+
 			bool isTextureCached = gPdf.pPages[i].bTextureCache;
-			bool isPixCached = gPdf.pPages[i].bPpmCache;
-			sInfo sInfo = { .fDpi = 100, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = i };
+			bool isPpmCached = gPdf.pPages[i].bPpmCache;
+			sInfo sInfo = { .fDpi = 100 / fscalex, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = i };
 			TracyCZoneNC(ctx1, "LoadAndDraw", 0x00FF00, 1);
-			if (isTextureCached == false || !gInst.pMainTexture)
+
+			if (isPpmCached == false)
 			{
-				if (isPixCached == false)
-				{
-					fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i].pPix);
-					gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-				}
-				if (!gInst.pMainTexture)
-				{
-					gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
-					gPdf.pPages[i].bTextureCache = true;
-				}
+				gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+				gPdf.pPages[i].bPpmCache = true;
 			}
-			gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
-			SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture, NULL, &tmp);
+			// if page resized
+			if (!gInst.ppTextArray[z])
+				gInst.ppTextArray[z] = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+
+			// if wasn't visible beforehand
+			if (isTextureCached == false)
+			{
+				printf("z: %d\n", z);
+				// MAKE STRUCT WITH INDEX + TEXTURE
+				gInst.ppTextArray[z] = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.ppTextArray[z]);
+				/* gPdf.pPages[i].bTextureCache = true; */
+			}
+			SDL_RenderCopyF(gInst.pRenderer, gInst.ppTextArray[z], NULL, &tmp);
+            /*
+			 * gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
+			 * SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture, NULL, &tmp);
+             */
             /*
 		 	 * SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
 			 * SDL_RenderFillRectF(gInst.pRenderer, &tmp);
@@ -372,12 +395,23 @@ MegaLoop(void)
 		} 
 		else
 		{
+			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i].pPix);
+			gPdf.pPages[i].pPix = NULL;
+			gPdf.pPages[i].bTextureCache = false;
+			gPdf.pPages[i].bPpmCache = false;
+
 			gPdf.pPages[i].views[0].x = gPdf.pPages[i].position.x - gView.x;
 			gPdf.pPages[i].views[0].y = gPdf.pPages[i].position.y - gView.y;
 			UpdateSmooth2(factor, i, &gPdf.pPages);
-			if (gVisible.count >= 4 || gVisible.count >= 3)
+			if (gVisible.count >= 4)
 				break;
 		}
+	}
+	static int tmpCount = 0;
+	if (tmpCount != gVisible.count)
+	{
+		printf("visible count: %d\n", gVisible.count);
+		tmpCount = gVisible.count;
 	}
 }
 

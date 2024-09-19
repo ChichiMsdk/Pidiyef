@@ -42,21 +42,13 @@ zoom_world(SDL_MouseWheelEvent wheel)
 
 	if (wheel.y > 0)
 	{
-		gZoom *= 2.0f;
-		if (gZoom >= 20.0f)
-			gZoom = 20;
 		fscalex *= 1.1f;
 		fscaley *= 1.1f;
-		printf("gZoom: %f\n", gZoom);
 	}
 	else if (wheel.y < 0)
 	{
-		gZoom /=2.0f;
-		if (gZoom <= 0.12f)
-			gZoom = 0.12f;
 		fscalex *= 0.9f;
 		fscaley *= 0.9f;
-		printf("gZoom: %f\n", gZoom);
 	}
 
 	float mousewX_after, mousewY_after;

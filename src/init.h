@@ -13,6 +13,7 @@ typedef struct Instance
 	SDL_Window		*pWin;
 	SDL_Texture		*pLoadingTexture;
 	SDL_Texture		*pMainTexture;
+	SDL_Texture		**ppTextArray;
 	int				width;
 	int				height;
 	uint64_t		nbThreads;

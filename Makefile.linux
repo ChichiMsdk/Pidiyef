@@ -22,11 +22,14 @@ CPPLIBS = -lstdc++
 LIB_PATH =
 
 CFLAGS =-DPLATFORM_LINUX
-# -fsanitize=address -DTRACY_ENABLE
+# -fsanitize=address
+# -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
-CFLAGS += -g3 -O0 -fdeclspec -MJ$(JSON_FILE)
-CPPFLAGS =-DTRACY_ENABLE -Wno-format
+CFLAGS += -g3 -O2 -fdeclspec -MJ$(JSON_FILE)
+CPPFLAGS =-DPLATFORM_LINUX -Wno-format
+# -fsanitize=address
+# -DTRACY_ENABLE 
 
 FILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_1_DIR)/*.c)\
 		$(wildcard $(SRC_2_DIR)/*.c) $(wildcard $(SRC_3_DIR)/*.c)\
