@@ -84,6 +84,8 @@ bool stop = false;
 float timing = 0.1f;
 int mode = 0;
 
+void prout(void);
+
 void
 event(SDL_Event *es)
 {
@@ -98,8 +100,8 @@ event(SDL_Event *es)
 	else if (e.type == SDL_KEYDOWN)
 	{ 
 		if (arr[SDL_SCANCODE_LCTRL] && arr[SDL_SCANCODE_O]) { int tmp = gPdf.viewingPage; gPdf.viewingPage = oldJump; oldJump = tmp; }
-		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_K]) { fscalex /= 1.1f; if (gView.w <= 0.1f || gView.h <= 0.1f) gView.w = gInst.width; gView.h = gInst.height;}
-		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_J]) { fscalex *= 1.1f; if (gView.w >= 100000.0f || gView.h <= 100000.0f) gView.w = gInst.width; gView.h = gInst.height;}
+		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_K]) { fscalex /= 1.1f; if (gView.w <= 0.1f || gView.h <= 0.1f) gView.w = gInst.width; gView.h = gInst.height; prout();}
+		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_J]) { fscalex *= 1.1f; if (gView.w >= 100000.0f || gView.h <= 100000.0f) gView.w = gInst.width; gView.h = gInst.height; prout();}
 		else if (e.key.keysym.sym == SDLK_ESCAPE) { exit(1);}
 		else if (e.key.keysym.sym == SDLK_k) { gView.y += (300 / fscalex); if (gView.y >= 4000000000) gView.y = 0.0f;}
 		else if (e.key.keysym.sym == SDLK_j) { gView.y -= (300 / fscalex); if (gView.y < 0.0f) gView.y = 0.0f;}
@@ -145,17 +147,19 @@ event(SDL_Event *es)
 		 * else if (e.wheel.y < 0) { gview.y += 50; if (gview.y > 4000000000.0f) gview.y = 0.0f;} 
          */
 		zoom_world(e.wheel);
-		SDL_DestroyTexture(gInst.pMainTexture);
-		gInst.pMainTexture = NULL;
-		for (int i = 0; i < gVisible.count; i++)
-		{
-			sInfo sInfo = { .fDpi = 50 / fscalex, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = gVisible.array[i] };
-			fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gVisible.array[i]].pPix);
-			gPdf.pPages[gVisible.array[i]].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-			gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[gVisible.array[i]].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
-			gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[gVisible.array[i]].pPix, gPdf.pCtx, gInst.pMainTexture);
-			gPdf.pPages[gVisible.array[i]].bTextureCache = true;
-		}
+		prout();
+	}
+}
+
+void
+prout()
+{
+	SDL_DestroyTexture(gInst.pMainTexture);
+	gInst.pMainTexture = NULL;
+	for (int i = 0; i < gVisible.count; i++)
+	{
+		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gVisible.array[i]].pPix);
+		gPdf.pPages[gVisible.array[i]].bPpmCache = false;
 	}
 }
 
@@ -218,20 +222,22 @@ main(int Argc, char **ppArgv)
 	while(gInst.running)
 	{
 		TracyCFrameMark
-		/* Event(&e); */
-		event(&e);
-		/* UpdateSmooth(factor); */
-		UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
+        /*
+		 * Event(&e);
+		 * UpdateSmooth(factor);
+		 * UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
+         */
         /*
 		 * Checks if it moved
 		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
 		 * or anything else
          */
+		event(&e);
 		SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(gInst.pRenderer);
 		MegaLoop();
 		SDL_RenderPresent(gInst.pRenderer);
-			/*
+            /*
 			 * if (!SDL_FRectEquals(&check, &gView3.currentView) || gRender == true)
 			 * {
 			 * 	bool isTextureCached = gPdf.pPages[gPdf.viewingPage].bTextureCache;
@@ -270,7 +276,7 @@ main(int Argc, char **ppArgv)
 			 *      |)}>#
 			 * 	gRender = false;
 			 * }
-			 */
+             */
 	}
 
     /*
@@ -292,16 +298,50 @@ main(int Argc, char **ppArgv)
 }
 
 void
+Reload(int i)
+{
+	/* printf("page requested is : %d/%zu\n", i, gPdf.nbOfPages); */
+	sInfo sInfo = {
+		.fDpi = 100 * gZoom,
+		.fZoom = 100,
+		.fRotate = 0,
+		.nbrPages = 1,
+		.pageStart = i
+	};
+
+	if (!gPdf.pPages[i].bPpmCache)
+	{
+		gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+		gPdf.pPages[i].bPpmCache = true;
+	}
+	if (!gInst.pMainTexture)
+	{
+		gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+		gPdf.pPages[i].bTextureCache = true;
+	}
+	gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
+	if (!gInst.pMainTexture)
+		exit(1);
+	gPdf.pPages[i].bTextureCache = true;
+	gRender = true;
+}
+
+void
 MegaLoop(void)
 {
 	int guess = 0;
 	static int oldGuess = 0;
+	guess = (gView.y / (297 + 20));
+
 	if (oldGuess != guess)
 	{
 		oldGuess = guess;
 		printf("Page: %d\n", guess);
 	}
-	guess--;
+	if (guess > 0)
+		guess--;
+	if (guess > 0)
+		guess--;
 	float offsetCam = 0;
 	float offsetReal = 0;
 
@@ -311,8 +351,9 @@ MegaLoop(void)
 	float factor = 0.4;
 	gVisible.count = 0;
 
-	int i= 0;
-	for(i = 0; i < gPdf.nbOfPages; i++)
+	int i = 0;
+	int j = 0;
+	for(i = guess; i < gPdf.nbOfPages; i++, j++)
 	{
 		int rx = 0, ry = 0; 
 		int rw = gPdf.pPages[i].position.w, rh = gPdf.pPages[i].position.h; 
@@ -346,36 +387,37 @@ MegaLoop(void)
 			gVisible.count++;
 			bool isTextureCached = gPdf.pPages[i].bTextureCache;
 			bool isPixCached = gPdf.pPages[i].bPpmCache;
-			sInfo sInfo = { .fDpi = 100, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = i };
-			TracyCZoneNC(ctx1, "LoadAndDraw", 0x00FF00, 1);
-			if (isTextureCached == false || !gInst.pMainTexture)
+			/* sInfo sInfo = { .fDpi = 100, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = i }; */
+			sInfo sInfo = { .fDpi = 200 / fscalex, .fZoom = 100, .fRotate = 0, .nbrPages = 1, .pageStart = i };
+			if (isPixCached == false)
 			{
-				if (isPixCached == false)
-				{
-					fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i].pPix);
-					gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
-				}
-				if (!gInst.pMainTexture)
-				{
-					gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
-					gPdf.pPages[i].bTextureCache = true;
-				}
+				gPdf.pPages[i].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+				gPdf.pPages[i].bPpmCache = true;
+			}
+			if (!gInst.pMainTexture)
+			{
+				gInst.pMainTexture = LoadTextures(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+				gPdf.pPages[i].bTextureCache = true;
 			}
 			gInst.pMainTexture = PixmapToTexture(gInst.pRenderer, gPdf.pPages[i].pPix, gPdf.pCtx, gInst.pMainTexture);
 			SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture, NULL, &tmp);
+			UpdateSmooth2(factor, i, &gPdf.pPages);
             /*
 		 	 * SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
 			 * SDL_RenderFillRectF(gInst.pRenderer, &tmp);
              */
-			TracyCZoneEnd(ctx1);
-			UpdateSmooth2(factor, i, &gPdf.pPages);
 		} 
 		else
 		{
+			if (gPdf.pPages[i].bPpmCache == true)
+			{
+				fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[i].pPix);
+				gPdf.pPages[i].bPpmCache = false;
+			}
 			gPdf.pPages[i].views[0].x = gPdf.pPages[i].position.x - gView.x;
 			gPdf.pPages[i].views[0].y = gPdf.pPages[i].position.y - gView.y;
 			UpdateSmooth2(factor, i, &gPdf.pPages);
-			if (gVisible.count >= 4 || gVisible.count >= 3)
+			if (gVisible.count >= 3)
 				break;
 		}
 	}

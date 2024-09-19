@@ -14,10 +14,10 @@ SRC_3_DIR = src/renderer
 SRC_4_DIR = src/renderer/vulkan
 
 INCLUDE_DIRS =-Isrc -IC:/Lib/SDL2/include -IC:/Lib/mupdf/include\
-	-IC:/Lib/tracy/public -IC:/Lib/tracy/public/tracy
+	-IC:/Lib/tracy-0.11.1/public -IC:/Lib/tracy-0.11.1/public/tracy
 
 LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32\
-	   -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
+	   # -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
 # -lclang_rt.asan_dynamic-x86_64
 
 
@@ -28,16 +28,14 @@ LIB_PATH =-LC:/Lib/SDL2/lib\
 
 CFLAGS =-nodefaultlibs
 # -fms-runtime-lib=dll_dbg
-CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
-# -DTRACY_ENABLE
+CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE) -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
 LIBFLAGS =-Wl,-nodefaultlib:libcmt
 #-fms-runtime-lib=dll_dbg
 
 # -fms-runtime-lib=dll_dbg
-CPPFLAGS =-O0 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs -fms-runtime-lib=dll
-# -DTRACY_ENABLE
+CPPFLAGS =-O0 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs -fms-runtime-lib=dll -DTRACY_ENABLE
 # CPPFLAGS =-DPLATFORM_WINDOWS -fms-runtime-lib=dll_dbg -Wno-format
 # CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd 
 
@@ -45,7 +43,7 @@ FILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_1_DIR)/*.c)\
 		$(wildcard $(SRC_2_DIR)/*.c) $(wildcard $(SRC_3_DIR)/*.c)\
 		$(wildcard $(SRC_4_DIR)/*.c)
 
-# CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
+CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
 
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(FILES))
 OBJS := $(patsubst $(OBJ_DIR)/platform/%.o, $(OBJ_DIR)/%.o, $(OBJS))
@@ -93,7 +91,7 @@ $(BUILD_DIR):
 
 compile_commands.json:
 	@echo [ > compile_commands.json
-	@-cat soon.json >> compile_commands.json
+	@cat soon.json >> compile_commands.json
 	@echo ] >> compile_commands.json
 	@rm -f soon.json
 
@@ -113,4 +111,4 @@ fclean: clean
 
 re: clean all
 
-.PHONY: all clean re
+.PHONY: all clean re compile_commands.json
