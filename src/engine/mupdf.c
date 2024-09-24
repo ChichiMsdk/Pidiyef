@@ -133,6 +133,187 @@ MyErrorEnd:
 	return NULL;
 }
 
+/*
+ * NOTE: Should probable clone the ctx here since we want heavy multithreading..
+ */
+
+SDL_Texture* 
+LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat)
+{
+	TracyCZone(ctx4, 1);
+	TracyCZoneName(ctx4, "LoadTexture", 1);
+	int width = fz_pixmap_width(pCtx, pPix);
+	int height = fz_pixmap_height(pCtx, pPix);
+	int components = fz_pixmap_components(pCtx, pPix);
+
+	int sdl_pixel_format; // You may need to expand grayscale to RGB
+	if (components == 1) 
+		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
+	else if (components == 3) 
+		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
+	else if (components == 4)
+		sdl_pixel_format = SDL_PIXELFORMAT_RGBA32;
+	else
+		return NULL;
+    SDL_Texture *pTexture = SDL_CreateTexture(pRenderer, sdl_pixel_format, textureFormat, width, height);
+	if (!pTexture) fprintf(stderr, "Couldn't create texture: %s\n", SDL_GetError());
+
+	int w = 0, h = 0;
+	SDL_QueryTexture(pTexture, NULL, NULL, &w, &h);
+	printf("texture x %f\ty %f\t", gView3.nextView.x, gView3.nextView.y);
+	printf("w %d\th %d\n", w, h);
+    /*
+	 * gView3.nextView.w = w;
+	 * gView3.nextView.h = h;
+     */
+
+	gView3.currentView.w = w;
+	gView3.currentView.h = h;
+	gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
+	gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
+	TracyCZoneEnd(ctx4);
+    return pTexture;
+}
+
+SDL_Texture* 
+PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture) 
+{
+	void *pixels;
+	int pitch = 0;
+	int width = fz_pixmap_width(pCtx, pPix);
+	int height = fz_pixmap_height(pCtx, pPix);
+	int components = fz_pixmap_components(pCtx, pPix);
+
+	if (SDL_LockTexture(pTexture, NULL, &pixels, &pitch) != 0)
+	{
+		fprintf(stderr, "Failed to lock texture: %s\n", SDL_GetError());
+		return NULL;
+	}
+	unsigned char *dest = (unsigned char *)pixels;
+
+	TracyCZone(ctx2, 1);
+	TracyCZoneName(ctx2, "PixMapToTexture", 1);
+	int y = 0;
+	// TODO: vectorize dis bitch
+	for (y = 0; y < height; ++y)
+		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
+
+	SDL_UnlockTexture(pTexture);
+    /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
+	TracyCZoneEnd(ctx2);
+    return pTexture;
+}
+
+/*
+ * For now and as a *TEST* only retrieve one page at a time
+ * and see how long it takes/how viable this really is !
+ * 
+ *  NOTE: 400 ms measured in debug mode
+ */
+
+fz_pixmap *
+CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
+{
+	TracyCZoneNC(createpdf, "CreatePDFPage", 0xFF0000, 1)
+
+	fz_document *pDoc = gPdf.pDoc;
+	fz_pixmap *pPix;
+	fz_page *pPage;
+	fz_device *pDev;
+	fz_rect bbox;
+	fz_rect t_bounds;
+	fz_context *pCtxClone;
+	/* pCtxClone = gPdf.pCtx; */
+
+	TracyCZoneNC(clone, "CloneContext", 0xffff00, 1)
+	pCtxClone = fz_clone_context(pCtx);
+	TracyCZoneEnd(clone);
+
+	/* TracyCZoneNC(doc, "OpenDoc", 0x0fff00, 1) */
+
+	/* NOTE:Opening the document everytime ? Maybe keep it instead ..? */
+
+    /*
+	 * pDoc = fz_open_document(pCtxClone, pFile);
+	 * assert(pDoc);
+     */
+
+	/* TracyCZoneEnd(doc); */
+
+	fz_matrix ctm;
+	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
+	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
+	/* ctm = fz_pre_translate(ctm, 500, 500); */
+	/* ctm = fz_invert_matrix(ctm); */
+
+	TracyCZoneNC(lp, "LoadPage", 0x00ff00, 1)
+
+	fz_try(pCtx)
+		pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
+	fz_catch(pCtx)
+	{
+		fz_report_error(pCtx);
+		fprintf(stderr, "Cannot load the page\n");
+		fprintf(stderr, "Info: zoom: %f\tDpi: %f\tFile: %s\n", sInfo->fZoom, sInfo->fDpi, pFile);
+		exit(1);
+	}
+
+	TracyCZoneEnd(lp);
+
+	bbox = fz_bound_page(pCtxClone, pPage);
+	printf("bbox x0: %f\ty0: %f\tx1: %f\ty1: %f\n", bbox.x0, bbox.y0, bbox.x1, bbox.y1);
+	fz_matrix matrix = fz_transform_page(bbox, sInfo->fZoom / sInfo->fDpi, sInfo->fRotate);
+
+	t_bounds = fz_transform_rect(bbox, ctm);
+	fz_irect ibounds = fz_round_rect(t_bounds);
+	/* ibounds.x0 = 100; */
+	if (ibounds.x1 + gView3.currentView.x > gInst.width) 
+		ibounds.x1 = gInst.width - gView3.currentView.x;
+	if (ibounds.x0 + gView3.currentView.x < 0)
+	{
+		/* ibounds.x0 = ibounds.x1 + gView3.currentView.x; */
+		ibounds.x0 = gView3.currentView.x * -1;
+		gView3.nextView.x = 0;
+		gView3.currentView.x = 0;
+		gView3.oldView.x = 0;
+		printf("%d + (%f) = %d\n", ibounds.x1, gView3.currentView.x, ibounds.x0);
+	}
+
+	if (ibounds.y1 + gView3.currentView.y > gInst.height)
+	{
+		ibounds.y1 = gInst.height - gView3.currentView.y;
+	}
+    /*
+	 * if (ibounds.y0 + gView3.currentView.y < 0)
+	 * {
+	 * 	ibounds.y0 = 0;
+	 * }
+     */
+	printf("Update\n");
+
+	printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
+
+	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
+	/* pPix = fz_new_pixmap_from_page(pCtxClone, pPage, ctm, fz_device_rgb(pCtxClone), 0); */
+	pPix = fz_new_pixmap_with_bbox(pCtxClone, fz_device_rgb(pCtxClone), ibounds, NULL, 0);
+	TracyCZoneEnd(pix);
+	fz_clear_pixmap_with_value(pCtxClone, pPix, 255);
+	pDev = fz_new_draw_device(pCtxClone, ctm, pPix);
+
+	fz_run_page(pCtxClone, pPage, pDev, fz_identity, NULL);
+	TracyCZoneNC(drop, "Dropping everything", 0x00fff0, 1)
+
+	fz_close_device(pCtxClone, pDev);
+	fz_drop_device(pCtxClone, pDev);
+	fz_drop_page(pCtx, pPage);
+	fz_drop_context(pCtxClone);
+	/* fz_drop_document(pCtxClone, pDoc); */
+
+	TracyCZoneEnd(drop);
+	TracyCZoneEnd(createpdf);
+	return pPix;
+}
+
 int
 LoadTexturesFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
 {
@@ -240,147 +421,7 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
     return 0;
 }
 
-/*
- * NOTE: Should probable clone the ctx here since we want heavy multithreading..
- */
 
-SDL_Texture* 
-LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat)
-{
-	TracyCZone(ctx4, 1);
-	TracyCZoneName(ctx4, "LoadTexture", 1);
-	int width = fz_pixmap_width(pCtx, pPix);
-	int height = fz_pixmap_height(pCtx, pPix);
-	int components = fz_pixmap_components(pCtx, pPix);
-
-	int sdl_pixel_format; // You may need to expand grayscale to RGB
-	if (components == 1) 
-		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
-	else if (components == 3) 
-		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
-	else if (components == 4)
-		sdl_pixel_format = SDL_PIXELFORMAT_RGBA32;
-	else
-		return NULL;
-    SDL_Texture *pTexture = SDL_CreateTexture(pRenderer, sdl_pixel_format, textureFormat, width, height);
-	if (!pTexture) fprintf(stderr, "Couldn't create texture: %s\n", SDL_GetError());
-
-	int w = 0, h = 0;
-	SDL_QueryTexture(pTexture, NULL, NULL, &w, &h);
-	gView3.currentView.w = w;
-	gView3.currentView.h = h;
-	gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
-	gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
-	TracyCZoneEnd(ctx4);
-    return pTexture;
-}
-
-SDL_Texture* 
-PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture) 
-{
-	void *pixels;
-	int pitch = 0;
-	int width = fz_pixmap_width(pCtx, pPix);
-	int height = fz_pixmap_height(pCtx, pPix);
-	int components = fz_pixmap_components(pCtx, pPix);
-
-	if (SDL_LockTexture(pTexture, NULL, &pixels, &pitch) != 0)
-	{
-		fprintf(stderr, "Failed to lock texture: %s\n", SDL_GetError());
-		return NULL;
-	}
-	unsigned char *dest = (unsigned char *)pixels;
-
-	TracyCZone(ctx2, 1);
-	TracyCZoneName(ctx2, "PixMapToTexture", 1);
-	int y = 0;
-	// TODO: vectorize dis bitch
-	for (y = 0; y < height; ++y)
-		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
-
-	SDL_UnlockTexture(pTexture);
-    /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
-	TracyCZoneEnd(ctx2);
-    return pTexture;
-}
-
-/*
- * For now and as a *TEST* only retrieve one page at a time
- * and see how long it takes/how viable this really is !
- * 
- *  NOTE: 400 ms measured in debug mode
- */
-
-fz_pixmap *
-CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
-{
-	TracyCZoneNC(createpdf, "CreatePDFPage", 0xFF0000, 1)
-
-	fz_document *pDoc = gPdf.pDoc;
-	fz_pixmap *pPix;
-	fz_page *pPage;
-	fz_device *pDev;
-	fz_rect bbox;
-	fz_rect t_bounds;
-	fz_context *pCtxClone;
-
-	TracyCZoneNC(clone, "CloneContext", 0xffff00, 1)
-	/* pCtxClone = fz_clone_context(pCtx); */
-	TracyCZoneEnd(clone);
-
-	pCtxClone = gPdf.pCtx;
-
-	/* TracyCZoneNC(doc, "OpenDoc", 0x0fff00, 1) */
-
-	/* NOTE:Opening the document everytime ? Maybe keep it instead ..? */
-
-    /*
-	 * pDoc = fz_open_document(pCtxClone, pFile);
-	 * assert(pDoc);
-     */
-
-	/* TracyCZoneEnd(doc); */
-
-	fz_matrix ctm;
-	ctm = fz_scale(sInfo->fZoom / sInfo->fDpi, sInfo->fZoom / sInfo->fDpi);
-	ctm = fz_pre_rotate(ctm, sInfo->fRotate);
-
-	TracyCZoneNC(lp, "LoadPage", 0x00ff00, 1)
-
-	fz_try(pCtx)
-		pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
-	fz_catch(pCtx)
-	{
-		fz_report_error(pCtx);
-		fprintf(stderr, "Cannot load the page\n");
-		fprintf(stderr, "Info: zoom: %f\tDpi: %f\tFile: %s\n", sInfo->fZoom, sInfo->fDpi, pFile);
-		exit(1);
-	}
-
-	TracyCZoneEnd(lp);
-
-	bbox = fz_bound_page(pCtxClone, pPage);
-	t_bounds = fz_transform_rect(bbox, ctm);
-
-	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
-	pPix = fz_new_pixmap_from_page(pCtxClone, pPage, ctm, fz_device_rgb(pCtxClone), 0);
-    /*
-	 * pPix = fz_new_pixmap_from_page_number(pCtxClone, pDoc, sInfo->pageStart, ctm,
-	 * 		fz_device_rgb(pCtxClone), 0);
-     */
-
-	TracyCZoneEnd(pix);
-
-	TracyCZoneNC(drop, "Dropping everything", 0x00fff0, 1)
-
-	fz_drop_page(pCtx, pPage);
-	/* fz_drop_document(pCtxClone, pDoc); */
-	/* fz_drop_context(pCtxClone); */
-
-	TracyCZoneEnd(drop);
-	TracyCZoneEnd(createpdf);
-	return pPix;
-}
 
 /*
  * PDFContext

@@ -40,6 +40,8 @@ void
 ChangePage(DIRECTION direction)
 {
 	TracyCZoneNC(ch, "NextPage", 0XFF00FF, 1)
+		SDL_DestroyTexture(gInst.pMainTexture);
+	gInst.pMainTexture = NULL;
 	if (direction == NEXT_P)
 	{
 		int old = gPdf.viewingPage;
@@ -121,7 +123,11 @@ Event(SDL_Event *e)
 	SDL_PollEvent(e);
 	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
 	if (e->type == SDL_QUIT) { gInst.running = false; }
-	if (e->type == SDL_WINDOWEVENT_ENTER || e->type == SDL_WINDOWEVENT_LEAVE)
+	if (e->type == SDL_WINDOWEVENT_RESIZED)
+	{
+		SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.height);
+	}
+	else if (e->type == SDL_WINDOWEVENT_ENTER || e->type == SDL_WINDOWEVENT_LEAVE)
 	{
 		gRender = true;
 	}
@@ -148,7 +154,17 @@ Event(SDL_Event *e)
 				ChangePage(BACK_P);
 				break;
 			case (SDLK_3):
-				LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo);
+				/* LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo); */
+				break;
+			case (SDLK_SPACE):
+				fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage].pPix);
+				gPdf.pPages[gPdf.viewingPage].bPpmCache = false;
+				gPdf.pPages[gPdf.viewingPage].bTextureCache = false;
+				SDL_DestroyTexture(gInst.pMainTexture);
+				gPdf.pPages[gPdf.viewingPage].pPix = NULL;
+				gInst.pMainTexture = NULL;
+				gRender = true;
+				ReloadPage();
 				break;
 		}
 	}
@@ -207,7 +223,7 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 					SDL_DestroyTexture(gInst.pMainTexture);
 					gInst.pMainTexture = NULL;
 				}
-				pRect->x = gInst.width / 4.0f;
+				/* pRect->x = gInst.width / 4.0f; */
 				gRender = true;
 				ReloadPage();
                 /*
@@ -237,7 +253,7 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 				}
 				gRender = true;
 				ReloadPage();
-				pRect->x = gInst.width / 4.0f;
+				/* pRect->x = gInst.width / 4.0f; */
                 /*
 				 * pRect->w /= 1.1f;
 				 * pRect->h /= 1.1f;

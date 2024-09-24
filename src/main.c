@@ -12,21 +12,6 @@ const char* __asan_default_options() { return "detect_leaks=0"; }
 
 #include <stdio.h>
 #include <stdbool.h>
-
-/*
- * -	Initialize the mudpf context.
- * 
- * -	Allocate an array of PDFPage of size of total number of pages.
- * 
- * -	Take 20 pages following the first one requested.
- * 		Spawn as many threads as needed to request the pages, dividing
- * 		the job equally between them.
- *
- * -	Add mutexes to signal the availability of a texture.
- * 
- * -	Only thread allowed to destroy texture is the main one.	
- */
-
 /*
  * TODO:
  * - Don't forget to free mutexes array and destroy them ! (OS dependant)
@@ -45,7 +30,7 @@ static inline void UpdateSmooth(float factor);
 
 extern int gRender;
 extern Instance gInst;
-Instance gInst = {.running = true, .width = 1000, .height = 700, .pWin = NULL, .pMutexes = NULL};
+Instance gInst = {.running = true, .width = 1000, .height = 1080, .pWin = NULL, .pMutexes = NULL};
 int gRender = false;
 EventQueue gEventQueue = {0};
 PDFView gView3 = {0};
@@ -235,61 +220,60 @@ main(int Argc, char **ppArgv)
 	while(gInst.running)
 	{
 		TracyCFrameMark
-		event(&e);
-		SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
-		SDL_RenderClear(gInst.pRenderer);
-		MegaLoop();
-		SDL_RenderPresent(gInst.pRenderer);
         /*
-		 * Event(&e);
-		 * UpdateSmooth(factor);
-		 * UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
+		 * event(&e);
+		 * SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
+		 * SDL_RenderClear(gInst.pRenderer);
+		 * MegaLoop();
+		 * SDL_RenderPresent(gInst.pRenderer);
          */
+		Event(&e);
+		UpdateSmooth(factor);
+		UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue));
         /*
 		 * Checks if it moved
 		 * TODO: make an UpdateFrameShown() to render when page changed, window is focused
 		 * or anything else
          */
-			/*
-			 * if (!SDL_FRectEquals(&check, &gView3.currentView) || gRender == true)
-			 * {
-			 * 	bool isTextureCached = gPdf.pPages[gPdf.viewingPage].bTextureCache;
-			 * 	SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
-			 * 	SDL_RenderClear(gInst.pRenderer);
-			 * 
-			 * 	if (isTextureCached == true)
-			 * 		SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture,
-			 * 				NULL, &gView3.currentView);
-			 *     #<{(|
-			 * 	 * if (isTextureCached == true)
-			 * 	 * 	SDL_RenderCopyF(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage].pTexture,
-			 * 	 * 			NULL, &gView.currentView);
-			 *      |)}>#
-			 * 	else
-			 * 	{
-			 * 		#<{(| TODO: add default texture |)}>#
-			 * 		SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
-			 * 		SDL_Rect defaultRect = {
-			 * 			.x = gView3.currentView.x,
-			 * 			.y = gView3.currentView.y,
-			 * 			.w = gView3.currentView.w,
-			 * 			.h = gView3.currentView.h
-			 * 		};
-			 * 		SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
-			 * 	}
-			 * 
-			 * 	SDL_RenderPresent(gInst.pRenderer);
-			 * 	check.x = gView3.currentView.x;
-			 * 	check.y = gView3.currentView.y;
-			 * 	check.w = gView3.currentView.w;
-			 * 	check.h = gView3.currentView.h;
-			 *     #<{(|
-			 * 	 * NOTE: Probably be better to add a mutex here as threads 
-			 * 	 * might be able to trigger it
-			 *      |)}>#
-			 * 	gRender = false;
-			 * }
-             */
+			if (!SDL_FRectEquals(&check, &gView3.currentView) || gRender == true)
+			{
+				bool isTextureCached = gPdf.pPages[gPdf.viewingPage].bTextureCache;
+				SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
+				SDL_RenderClear(gInst.pRenderer);
+			
+				if (isTextureCached == true)
+					SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture,
+							NULL, &gView3.currentView);
+			    /*
+				 * if (isTextureCached == true)
+				 * 	SDL_RenderCopyF(gInst.pRenderer, gPdf.pPages[gPdf.viewingPage].pTexture,
+				 * 			NULL, &gView.currentView);
+			     */
+				else
+				{
+					/* TODO: add default texture */
+					SDL_SetRenderDrawColor(gInst.pRenderer, 0xFF, 0x00, 0x00, 0xFF);
+					SDL_Rect defaultRect = {
+						.x = gView3.currentView.x,
+						.y = gView3.currentView.y,
+						.w = gView3.currentView.w,
+						.h = gView3.currentView.h
+					};
+					SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
+				}
+			
+				SDL_RenderPresent(gInst.pRenderer);
+				check.x = gView3.currentView.x;
+				check.y = gView3.currentView.y;
+				check.w = gView3.currentView.w;
+				check.h = gView3.currentView.h;
+			    /*
+				 * NOTE: Probably be better to add a mutex here as threads 
+				 * might be able to trigger it
+			     */
+				gRender = false;
+			}
+			SDL_Delay(14);
 	}
 
     /*

@@ -29,7 +29,7 @@ Init(int ac, char **av, Instance *inst)
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			gInst.width , gInst.height,
-			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
 	if (!window)
 	{
 		fprintf(stderr, "Window failed\nSDL_Error: %s\n", SDL_GetError()); 
