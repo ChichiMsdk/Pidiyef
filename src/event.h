@@ -11,5 +11,6 @@ typedef enum DIRECTION
 
 void	Event(SDL_Event *e);
 void	ChangePage(DIRECTION direction);
+void	event(SDL_Event *es);
 
 #endif //EVENT_H

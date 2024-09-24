@@ -24,6 +24,8 @@ typedef struct sInfo
 	float			fZoom;
 	float			fRotate;
 	float			fDpi;
+	SDL_FRect		rectView;
+	fz_rect			bbox;
 }sInfo;
 
 typedef struct PDFPage
@@ -64,11 +66,19 @@ typedef struct PDFView
 
 extern PDFContext gPdf;
 extern PDFView gView3;
+extern PDFView gView2;
+extern const float gpZoom[];
+extern int gCurrentZoom;
+extern int gSizeZoomArray;
 
 PDFContext	CreatePDF(char *pFile, int page, float zoom, float rotate);
+void		*CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo);
+fz_pixmap 	*CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo);
+fz_pixmap 	*CreatePDFPageOpti(fz_context *pCtx, const char *pFile, sInfo *sInfo);
+
+SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
 void		UpdateTextures(SDL_Renderer *pRenderer, int index);
 PDFPage		*LoadPagesArray(size_t nbOfPages);
-void		*CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo);
-SDL_Texture* PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture);
+SDL_Texture	*LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat);
 
 #endif //PDF_H

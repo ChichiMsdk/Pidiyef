@@ -7,13 +7,19 @@
 #include "event.h"
 #include "platform/os_threads.h"
 
+typedef struct TextureMap
+{
+	SDL_Texture	*pTexture;
+	int			pageIndex;
+}TextureMap;
+
 typedef struct Instance
 {
 	SDL_Renderer	*pRenderer;
 	SDL_Window		*pWin;
 	SDL_Texture		*pLoadingTexture;
 	SDL_Texture		*pMainTexture;
-	SDL_Texture		**ppTextArray;
+	TextureMap		*pTextureMap;
 	int				width;
 	int				height;
 	uint64_t		nbThreads;
@@ -24,7 +30,10 @@ typedef struct Instance
 
 }Instance;
 
+extern float gZoom;
+extern int gRender;
 extern Instance gInst;
+extern SDL_FRect gView;
 
 void	Init(int argc, char **ppArgv, Instance *pInst);
 

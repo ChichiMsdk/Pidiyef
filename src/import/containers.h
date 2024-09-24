@@ -4,11 +4,13 @@
 #include "platform/os_threads.h"
 
 #define MY_MAX_EVENTS 100
+#define MY_MAX_CACHE 5
 
 typedef struct EventQueue
 {
 	int *q;
 	size_t head, tail;
+	size_t capacity;
 	uint64_t lastPoll;
 	Mutex mutex;
 }EventQueue;
@@ -21,6 +23,7 @@ typedef struct dyArray
 }dyArray;
 
 extern EventQueue gEventQueue;
+extern EventQueue gCacheQueue;
 
 void	InitArray(dyArray *a, size_t Size);
 void	DestroyArray(dyArray *pArray);

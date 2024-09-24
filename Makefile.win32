@@ -10,33 +10,37 @@ CPP = clang++
 SRC_DIR = src
 SRC_1_DIR = src/platform
 SRC_2_DIR = src/engine
-SRC_3_DIR = src/renderer
+SRC_3_DIR = src/import
 SRC_4_DIR = src/renderer/vulkan
 
 INCLUDE_DIRS =-Isrc -IC:/Lib/SDL2/include -IC:/Lib/mupdf/include\
 	-IC:/Lib/tracy-0.11.1/public -IC:/Lib/tracy-0.11.1/public/tracy
 
-LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32\
-	   # -lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
+LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32
+# LIBS +=-lclang_rt.asan_dynamic_runtime_thunk-x86_64 -lclang_rt.asan_dbg_dynamic-x86_64
+
 # -lclang_rt.asan_dynamic-x86_64
 
-
-LIB_PATH =-LC:/Lib/SDL2/lib\
-		  -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Release
-		  # -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Profiler
-		  # -LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
+LIB_PATH =-LC:/Lib/SDL2/lib
+LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Release
+# LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Profiler
+# LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
 
 CFLAGS =-nodefaultlibs
-# -fms-runtime-lib=dll_dbg
-CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE) -DTRACY_ENABLE
+# CFLAGS +=-fms-runtime-lib=dll_dbg
+
+CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
+CFLAGS += -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
 LIBFLAGS =-Wl,-nodefaultlib:libcmt
 #-fms-runtime-lib=dll_dbg
 
-# -fms-runtime-lib=dll_dbg
-CPPFLAGS =-O0 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs -fms-runtime-lib=dll -DTRACY_ENABLE
-# CPPFLAGS =-DPLATFORM_WINDOWS -fms-runtime-lib=dll_dbg -Wno-format
+CPPFLAGS =-O0 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs
+CPPFLAGS +=-fms-runtime-lib=dll
+CPPFLAGS +=-DTRACY_ENABLE
+# CPPFLAGS +=-fms-runtime-lib=dll_dbg
+
 # CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd 
 
 FILES = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_1_DIR)/*.c)\
@@ -48,7 +52,7 @@ CPP_FILES = $(wildcard $(SRC_DIR)/*.cpp)
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(FILES))
 OBJS := $(patsubst $(OBJ_DIR)/platform/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 OBJS := $(patsubst $(OBJ_DIR)/engine/%.o, $(OBJ_DIR)/%.o, $(OBJS))
-OBJS := $(patsubst $(OBJ_DIR)/renderer/%.o, $(OBJ_DIR)/%.o, $(OBJS))
+OBJS := $(patsubst $(OBJ_DIR)/import/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 OBJS := $(patsubst $(OBJ_DIR)/vulkan/%.o, $(OBJ_DIR)/%.o, $(OBJS))
 
 CPP_OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(CPP_FILES))
@@ -93,7 +97,6 @@ compile_commands.json:
 	@echo [ > compile_commands.json
 	@cat soon.json >> compile_commands.json
 	@echo ] >> compile_commands.json
-	@rm -f soon.json
 
 clean:
 	@echo Deleting files..
@@ -111,4 +114,4 @@ fclean: clean
 
 re: clean all
 
-.PHONY: all clean re compile_commands.json
+.PHONY: all clean re

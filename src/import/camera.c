@@ -32,6 +32,10 @@ screen_to_world(int sx, int sy, float *fworldx, float *fworldy)
 }
 
 extern float gZoom;
+extern float gpZoom[];
+extern int gCurrentZoom;
+extern int gSizeZoomArray;
+
 #include <stdio.h>
 void
 zoom_world(SDL_MouseWheelEvent wheel)
@@ -42,13 +46,34 @@ zoom_world(SDL_MouseWheelEvent wheel)
 
 	if (wheel.y > 0)
 	{
-		fscalex *= 1.1f;
-		fscaley *= 1.1f;
+		fscalex *= 2.0f;
+		fscaley *= 2.0f;
+		if (fscalex >= 2200.0f)
+			fscalex = 2200.0f;
+		if (fscaley >= 2200.0f)
+			fscaley = 2200.0f;
+        /*
+		 * gCurrentZoom++;
+		 * if (gCurrentZoom >= gSizeZoomArray)
+		 * 	gCurrentZoom = gSizeZoomArray - 1;
+		 * printf("CurrentZoom[%d]: %f\n", gCurrentZoom, gpZoom[gCurrentZoom]);
+         */
 	}
 	else if (wheel.y < 0)
 	{
-		fscalex *= 0.9f;
-		fscaley *= 0.9f;
+		fscalex /= 2.0f;
+		fscaley /= 2.0f;
+		if (fscalex <= 0.75f)
+			fscalex = 0.75f;
+		if (fscaley <= 0.75f)
+			fscaley = 0.75f;
+
+        /*
+		 * gCurrentZoom--;
+		 * if (gCurrentZoom < 0)
+		 * 	gCurrentZoom = 0;
+		 * printf("CurrentZoom[%d]: %f\n", gCurrentZoom, gpZoom[gCurrentZoom]);
+         */
 	}
 
 	float mousewX_after, mousewY_after;

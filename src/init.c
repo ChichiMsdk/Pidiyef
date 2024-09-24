@@ -1,9 +1,8 @@
 #include <stdio.h>
 
 #include "init.h"
-#include "containers.h"
+#include "import/containers.h"
 
-extern Instance gInst;
 uint64_t GetNbProc(void);
 
 void
@@ -29,7 +28,7 @@ Init(int ac, char **av, Instance *inst)
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			gInst.width , gInst.height,
-			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
 	if (!window)
 	{
 		fprintf(stderr, "Window failed\nSDL_Error: %s\n", SDL_GetError()); 
@@ -41,12 +40,10 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Renderer failed!\nSDL_Error: %s\n", SDL_GetError());
 		exit(1);
 	}
-    /*
-	 * if(SDL_RenderSetVSync(renderer, 1))
-	 * {
-	 * 	fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
-	 * }
-     */
+	if(SDL_RenderSetVSync(renderer, 1))
+	{
+		fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
+	}
 	gInst.pMutexes = malloc(sizeof(Mutex) * MAX_MUTEX);
 	for (int i = 0; i < MAX_MUTEX; i++)
 	{
@@ -65,9 +62,14 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Couldn not create EventQueue\n");
 		exit(1);
 	}
-
-	gView3.currentView.w = (float)1000 / 2;
-	gView3.currentView.h = (float)700 / 2;
+	if (!InitQueue(&gCacheQueue, MY_MAX_CACHE))
+	{
+		fprintf(stderr, "Couldn not create CacheQueue\n");
+		exit(1);
+	}
+	/* bbox.x1 595.280029      bbox.y1 841.890015 */
+	gView3.currentView.w = 595.280029;
+	gView3.currentView.h = 841.890015;
 
 	gView3.currentView.x = gInst.width / 2.0f - gView3.currentView.w / 2.0f;
 	gView3.currentView.y = gInst.height / 2.0f - gView3.currentView.h / 2.0f;
@@ -78,4 +80,10 @@ Init(int ac, char **av, Instance *inst)
 	gView3.oldView.x = gView3.currentView.x; gView3.oldView.y = gView3.currentView.y;
 	gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
 
+	gInst.pTextureMap = malloc(sizeof(TextureMap) * 20);
+	for (int i = 0; i < 20; i++)
+	{
+		gInst.pTextureMap[i].pTexture = NULL;
+		gInst.pTextureMap[i].pageIndex = -1;
+	}
 }

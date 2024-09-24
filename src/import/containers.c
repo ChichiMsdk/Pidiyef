@@ -13,6 +13,7 @@ InitQueue(EventQueue *pQueue, size_t size)
 
 	pQueue->head = 0;
 	pQueue->tail = 0;
+	pQueue->capacity = size;
 	pQueue->lastPoll = GetCounter();
 	if (myCreateMutex(&pQueue->mutex) != 0)
 		goto FAIL;
@@ -40,13 +41,13 @@ PushEvent(EventQueue *pQueue, int value)
 	/*
 	 * WARNING: this WILL overwrite non handled event when roundtripping
 	 */
-	pQueue->tail = (pQueue->tail + 1) % MY_MAX_EVENTS;
+	pQueue->tail = (pQueue->tail + 1) % pQueue->capacity;
 }
 
 static inline void
 PopEvent(EventQueue *pQueue)
 {
-	pQueue->head = (pQueue->head + 1) % MY_MAX_EVENTS;
+	pQueue->head = (pQueue->head + 1) % pQueue->capacity;
 }
 
 double timeToPoll = 50.0; // Every 50ms
