@@ -287,13 +287,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
 	fz_irect prout = fz_round_rect(fz_transform_rect(bbox, ctm));
 
-    /*
-	 * gView3.currentView.w = ibounds.x1 - ibounds.x0;
-	 * gView3.currentView.h = ibounds.y1 - ibounds.y0;
-	 * gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
-	 * gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
-     */
-
+    
 	/* ibounds.x0 = 100; */
 	/* if (ibounds.x1 + gView3.nextView.x > gInst.width)  */
 	if (ibounds.x1 > gInst.width) 
