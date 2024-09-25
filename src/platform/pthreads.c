@@ -1,7 +1,7 @@
 #ifdef PLATFORM_LINUX
 
 #	include "platform/os_threads.h"
-#	include "containers.h"
+#	include "import/containers.h"
 #	include <unistd.h>
 #	include <pthread.h>
 #	include <assert.h>
