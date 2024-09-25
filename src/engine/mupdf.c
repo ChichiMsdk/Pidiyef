@@ -302,11 +302,6 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	{
 		/* ibounds.x0 = ibounds.x1 + gView3.currentView.x; */
 		ibounds.x0 = gView3.nextView.x * -1;
-        /*
-		 * gView3.nextView.x = 0;
-		 * gView3.currentView.x = 0;
-		 * gView3.oldView.x = 0;
-         */
 	}
 
 	/* if (ibounds.y1 + gView3.nextView.y > gInst.height) */
@@ -317,11 +312,6 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	if (gView3.nextView.y < 0)
 	{
 		ibounds.y0 = gView3.nextView.y * -1;
-        /*
-		 * gView3.nextView.y = 0;
-		 * gView3.nextView.y = 0;
-		 * gView3.oldView.y = 0;
-         */
 	}
 
 	gView3.nextView.w = ibounds.x1 - ibounds.x0;
