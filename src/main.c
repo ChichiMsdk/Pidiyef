@@ -103,7 +103,7 @@ void
 Version1(SDL_Event *e)
 {
 	SDL_FRect check = {-1, -1, -1, -1};
-	float factor = 0.4f;
+	float factor = 1.0f;
 	Event(e);
 	/* UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue)); */
 	mUpdateSmooth(factor);

@@ -224,6 +224,7 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 			goto nothing;
 	}
 reloading:
+nothing:
 	if (gPdf.pPages[gPdf.viewingPage].bPpmCache)
 	{
 		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage].pPix);
@@ -235,7 +236,6 @@ reloading:
 	}
 	gRender = true;
 	ReloadPage();
-nothing:
 	return ;
     /*
 	 * pView->oldView.x = pView->currentView.x;
