@@ -101,6 +101,6 @@ clean:
 fclean: clean
 	rm -f compile_commands.json
 
-re: clean all
+re: fclean all
 
 .PHONY: all clean re
