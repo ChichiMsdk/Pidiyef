@@ -141,6 +141,7 @@ Event(SDL_Event *e)
 			case (SDLK_k):
 			case (SDLK_1):
 			case (SDLK_2):
+			case (SDLK_SPACE):
 				MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView);
 				break;
 			case (SDLK_RIGHT):
@@ -166,8 +167,11 @@ Event(SDL_Event *e)
 inline static void
 MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 {
+	// TODO: Add reloading bool when texture's size changes !
 	switch (key)
 	{
+		case (SDLK_SPACE):
+			goto reloading;
 		case (SDLK_h):
 			{
 				pRect->x -= MOVE; 
@@ -178,7 +182,7 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 		case (SDLK_l):
 			{
 				pRect->x += MOVE; 
-				if (pRect->x >= (gInst.width + pRect->w))
+				if (pRect->x >= (gInst.width))
 					pRect->x = (gInst.width - 100);
 				goto nothing;
 			}
@@ -224,6 +228,7 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 			goto nothing;
 	}
 reloading:
+nothing:
 	if (gPdf.pPages[gPdf.viewingPage].bPpmCache)
 	{
 		fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[gPdf.viewingPage].pPix);
@@ -235,7 +240,6 @@ reloading:
 	}
 	gRender = true;
 	ReloadPage();
-nothing:
 	return ;
     /*
 	 * pView->oldView.x = pView->currentView.x;
