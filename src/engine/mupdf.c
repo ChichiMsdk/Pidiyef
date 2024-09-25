@@ -244,6 +244,12 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
     return pTexture;
 }
 
+/*
+ * For now and as a *TEST* only retrieve one page at a time
+ * and see how long it takes/how viable this really is !
+ * 
+ *  NOTE: 400 ms measured in debug mode
+ */
 fz_pixmap *
 CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 {
@@ -280,8 +286,6 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 
 	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
 	fz_irect prout = fz_round_rect(fz_transform_rect(bbox, ctm));
-	gView3.nextView.w = ibounds.x1 - ibounds.x0;
-	gView3.nextView.h = ibounds.y1 - ibounds.y0;
 
     /*
 	 * gView3.currentView.w = ibounds.x1 - ibounds.x0;
@@ -291,7 +295,8 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
      */
 
 	/* ibounds.x0 = 100; */
-	if (ibounds.x1 + gView3.nextView.x > gInst.width) 
+	/* if (ibounds.x1 + gView3.nextView.x > gInst.width)  */
+	if (ibounds.x1 > gInst.width) 
 		ibounds.x1 = gInst.width - gView3.nextView.x;
 	if (gView3.nextView.x < 0)
 	{
@@ -304,7 +309,8 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
          */
 	}
 
-	if (ibounds.y1 + gView3.nextView.y > gInst.height)
+	/* if (ibounds.y1 + gView3.nextView.y > gInst.height) */
+	if (ibounds.y1 > gInst.height)
 	{
 		ibounds.y1 = gInst.height - gView3.nextView.y;
 	}
@@ -318,6 +324,8 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
          */
 	}
 
+	gView3.nextView.w = ibounds.x1 - ibounds.x0;
+	gView3.nextView.h = ibounds.y1 - ibounds.y0;
 	printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
 	printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
 
@@ -348,6 +356,32 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 
 	TracyCZoneEnd(createpdf);
 	return pPix;
+}
+
+PDFPage *
+LoadPagesArray(size_t nbOfPages)
+{
+	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
+	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
+	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
+	int width = 595;
+	int height = 842;
+	int gap = 20;
+	// TODO: retrieve the data from mupdf for page dimensions !
+	for (int i = 0; i < nbOfPages; i++)
+	{
+		pPages[i].bPpmCache = false;
+		pPages[i].bTextureCache = false;
+		pPages[i].pTexture = NULL;
+		pPages[i].pPix = NULL;
+		pPages[i].position.w = width;
+		pPages[i].position.h = height;
+		pPages[i].position.x = (gInst.width / 2.0f) - (width / 2.0f);
+		pPages[i].position.y = (i * (height + gap));
+		for (int j = 0; j < 3; j++)
+			pPages[i].views[j] = pPages[i].position;
+	}
+	return pPages;
 }
 
 fz_matrix
@@ -382,42 +416,10 @@ viewctm(fz_context *pCtx, fz_page* pPage, float zoom, int rotation)
     return FzCreateViewCtm(bounds, zoom, rotation);
 }
 
-/*
- * For now and as a *TEST* only retrieve one page at a time
- * and see how long it takes/how viable this really is !
- * 
- *  NOTE: 400 ms measured in debug mode
- */
 fz_rect
 FzRectFromSDL(SDL_FRect rect)
 {
 	return (fz_rect){ .x0 = rect.x, .y0 = rect.y, .x1 = rect.x + rect.w, .y1 = rect.y + rect.h };
-}
-
-PDFPage *
-LoadPagesArray(size_t nbOfPages)
-{
-	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
-	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
-	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
-	int width = 595;
-	int height = 842;
-	int gap = 20;
-	// TODO: retrieve the data from mupdf for page dimensions !
-	for (int i = 0; i < nbOfPages; i++)
-	{
-		pPages[i].bPpmCache = false;
-		pPages[i].bTextureCache = false;
-		pPages[i].pTexture = NULL;
-		pPages[i].pPix = NULL;
-		pPages[i].position.w = width;
-		pPages[i].position.h = height;
-		pPages[i].position.x = (gInst.width / 2.0f) - (width / 2.0f);
-		pPages[i].position.y = (i * (height + gap));
-		for (int j = 0; j < 3; j++)
-			pPages[i].views[j] = pPages[i].position;
-	}
-	return pPages;
 }
 
 int

@@ -103,7 +103,7 @@ void
 Version1(SDL_Event *e)
 {
 	SDL_FRect check = {-1, -1, -1, -1};
-	float factor = 0.4f;
+	float factor = 1.0f;
 	Event(e);
 	/* UpdateTextures(gInst.pRenderer, PollEvent(&gEventQueue)); */
 	mUpdateSmooth(factor);
@@ -136,7 +136,7 @@ Version1(SDL_Event *e)
 				.x = gView3.currentView.x * 2,
 				.y = gView3.currentView.y,
 				.w = gView3.currentView.w / 100,
-				.h = gView3.currentView.h
+				.h = gInst.height
 			};
 			SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
 		}
