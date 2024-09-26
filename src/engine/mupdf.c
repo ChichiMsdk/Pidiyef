@@ -209,30 +209,6 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 	unsigned char *dest = (unsigned char *)pixels;
 
 	TracyCZoneNS(ctx2, "PixMapToTexture", 5, 1);
-    /*
-	 * int y = 0;
-	 * // TODO: vectorize dis bitch
-	 * for (y = 0; y < height2; ++y)
-	 * {
-	 * 	memcpy(dest + y * pitch, pix->samples + y * width2 * components2, width2 * components2);
-	 * }
-     */
-    /*
-	 * int row_size = ibounds.x1 - ibounds.x0 * components;
-     * 
-	 * // Copy each row of the rectangle
-	 * for (int i = 0; i < height; i++)
-	 * {
-	 * 	// Calculate the starting point in the source pixmap
-	 * 	unsigned char* src_row = pPix->samples + ((ibounds.x0 + i) * width + ibounds.x0) * components;
-     * 
-	 * 	// Calculate the destination row in the destination buffer (or wherever you're copying to)
-	 * 	unsigned char* dst_row = dest + (i * pitch);
-     * 
-	 * 	// Copy the row
-	 * 	memcpy(dst_row, src_row, row_size);
-	 * }
-     */
 	int y;
 	// TODO: vectorize dis bitch
 	for (y = 0; y < height; ++y)
@@ -289,35 +265,63 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
 	fz_irect prout = fz_round_rect(fz_transform_rect(bbox, ctm));
 
-    
+    /*
+	 * gView3.currentView.w = ibounds.x1 - ibounds.x0;
+	 * gView3.currentView.h = ibounds.y1 - ibounds.y0;
+	 * gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
+	 * gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
+     */
+
+	int xleft = 0, yleft = 0;
+
+	gView3.nextView.h = ibounds.y1 - ibounds.y0;
+	gView3.nextView.w = ibounds.x1 - ibounds.x0;
+	gView3.nextView.w += xleft;
+	gView3.nextView.h += yleft;
+
 	/* ibounds.x0 = 100; */
-	/* if (ibounds.x1 + gView3.nextView.x > gInst.width)  */
-	/* if (ibounds.x1 > gInst.width && gView3.nextView.x > 0)  */
-	if (ibounds.x1 > gInst.width) 
-		ibounds.x1 = gInst.width - gView3.nextView.x;
 	if (gView3.nextView.x < 0)
 	{
-		/* ibounds.x0 = ibounds.x1 + gView3.currentView.x; */
+		xleft = ibounds.x1 - ibounds.x0;
 		ibounds.x0 = gView3.nextView.x * -1;
 	}
-
-	/* if (ibounds.y1 + gView3.nextView.y > gInst.height) */
-	/* if (ibounds.y1 > gInst.height && gView3.nextView.y > 0) */
-	if (ibounds.y1 > gInst.height)
+	if (ibounds.x1 + gView3.nextView.x > gInst.width) 
 	{
-		ibounds.y1 = gInst.height - gView3.nextView.y;
+		ibounds.x1 = gInst.width - gView3.nextView.x;
+		printf("yleft - ibounds.1 = %d\n", yleft - ibounds.y1);
+		if (xleft - ibounds.x1 > 0)
+			ibounds.x1 += xleft - ibounds.x1;
 	}
+
+
+	// NOTE: CREATE NEW IBOUNDS ????? CUZ THIS FUCKS MY OPTI, NEED THE TEXTURE WIDTH AND HEIGHT TO MATCH
 	if (gView3.nextView.y < 0)
 	{
+		yleft = ibounds.y1 - ibounds.y0;
 		ibounds.y0 = gView3.nextView.y * -1;
 	}
+	if (ibounds.y1 + gView3.nextView.y > gInst.height)
+	{
+        /* 
+		 * HACK:
+		 * LOOOOOOOOOOOOOOOOOOL how the fuck did I figure that out ?????????????
+		 * (about to fall asleep while solving it XDDDDDDDDDDDDD)
+         */
+		ibounds.y1 = gInst.height - gView3.nextView.y;
+		printf("yleft - ibounds.1 = %d\n", yleft - ibounds.y1);
+		if (yleft - ibounds.y1 > 0)
+			ibounds.y1 += yleft - ibounds.y1;
+	}
 
-	gView3.nextView.w = ibounds.x1 - ibounds.x0;
 	gView3.nextView.h = ibounds.y1 - ibounds.y0;
-    /*
-	 * printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
-	 * printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
-     */
+	gView3.nextView.w = ibounds.x1 - ibounds.x0;
+
+	xleft = 0;
+	yleft = 0;
+
+	printf("gInst.height %d\t gInst.width %d\n", gInst.height, gInst.width);
+	printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
+	printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
 
 	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
 	pPix = fz_new_pixmap_with_bbox(pCtxClone, fz_device_rgb(pCtxClone), ibounds, NULL, 0);
