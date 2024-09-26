@@ -66,7 +66,6 @@ typedef struct PDFView
 
 extern PDFContext gPdf;
 extern PDFView gView3;
-extern PDFView gView2;
 extern const float gpZoom[];
 extern int gCurrentZoom;
 extern int gSizeZoomArray;

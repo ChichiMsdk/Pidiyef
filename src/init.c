@@ -57,16 +57,6 @@ Init(int ac, char **av, Instance *inst)
 	gInst.pWin = window;
 	gInst.nbThreads = GetNbProc();
 	InitPerfFreq();
-	if (!InitQueue(&gEventQueue, MY_MAX_EVENTS))
-	{
-		fprintf(stderr, "Couldn not create EventQueue\n");
-		exit(1);
-	}
-	if (!InitQueue(&gCacheQueue, MY_MAX_CACHE))
-	{
-		fprintf(stderr, "Couldn not create CacheQueue\n");
-		exit(1);
-	}
 	/* bbox.x1 595.280029      bbox.y1 841.890015 */
 	gView3.currentView.w = 595.280029;
 	gView3.currentView.h = 841.890015;

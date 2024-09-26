@@ -78,93 +78,51 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
   those pages to a bitmap and display those bitmaps.
 */
 
-
-/*
- * NOTE: Should probable clone the ctx here since we want heavy multithreading..
- */
-
 SDL_Texture* 
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat)
 {
-	TracyCZone(ctx4, 1);
-	TracyCZoneName(ctx4, "LoadTexture", 1);
-
 	int x = fz_pixmap_x(pCtx, pPix);
 	int y = fz_pixmap_y(pCtx, pPix);
 	int width = fz_pixmap_width(pCtx, pPix);
 	int height = fz_pixmap_height(pCtx, pPix);
 	int components = fz_pixmap_components(pCtx, pPix);
-
 	int sdl_pixel_format; // You may need to expand grayscale to RGB
-	if (components == 1) 
-		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
-	else if (components == 3) 
-		sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
-	else if (components == 4)
-		sdl_pixel_format = SDL_PIXELFORMAT_RGBA32;
-	else
-		return NULL;
+
+	if (components == 1) sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
+	else if (components == 3) sdl_pixel_format = SDL_PIXELFORMAT_RGB24;
+	else if (components == 4) sdl_pixel_format = SDL_PIXELFORMAT_RGBA32;
+	else return NULL;
+
     SDL_Texture *pTexture = SDL_CreateTexture(pRenderer, sdl_pixel_format, textureFormat, width, height);
 	if (!pTexture) fprintf(stderr, "Couldn't create texture: %s\n", SDL_GetError());
 
 	int w = 0, h = 0;
 	SDL_QueryTexture(pTexture, NULL, NULL, &w, &h);
-    /*
-	 * gView3.nextView.w = w;
-	 * gView3.nextView.h = h;
-     */
-
-	TracyCZoneEnd(ctx4);
     return pTexture;
 }
-
-extern float fscalex;
-fz_irect ibounds;
 
 SDL_Texture* 
 PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture) 
 {
-	fz_irect v = fz_pixmap_bbox(pCtx, pPix);
-	void *pixels;
+	void *pixels = NULL;
 	int pitch = 0;
 	int width = fz_pixmap_width(pCtx, pPix);
 	int height = fz_pixmap_height(pCtx, pPix);
-	int x3 = fz_pixmap_x(pCtx, pPix);
-	int y3 = fz_pixmap_y(pCtx, pPix);
 	int components = fz_pixmap_components(pCtx, pPix);
-    /*
-	 * printf("vrai w: %d\th: %d\tx: %d\t y: %d\n", width, height, x3, y3);
-	 * printf("ibounds w: %d\th: %d\tx: %d\t y: %d\n",
-	 * 		ibounds.x1 - ibounds.x0, ibounds.y1 - ibounds.y0, ibounds.x0, ibounds.y0);
-     */
 
 	if (SDL_LockTexture(pTexture, NULL, &pixels, &pitch) != 0)
-	{
-		fprintf(stderr, "Failed to lock texture: %s\n", SDL_GetError());
-		return NULL;
-	}
+	{ fprintf(stderr, "Failed to lock texture: %s\n", SDL_GetError()); return NULL; }
+
 	unsigned char *dest = (unsigned char *)pixels;
 
-	TracyCZoneNS(ctx2, "PixMapToTexture", 5, 1);
-	int y;
 	// TODO: vectorize dis bitch
-	for (y = 0; y < height; ++y)
-	{
+	for (int y = 0; y < height; ++y)
 		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
-	}
-	/* printf("y2: %d\n", y); */
+
 	SDL_UnlockTexture(pTexture);
-    /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
-	TracyCZoneEnd(ctx2);
     return pTexture;
 }
 
-/*
- * For now and as a *TEST* only retrieve one page at a time
- * and see how long it takes/how viable this really is !
- * 
- *  NOTE: 400 ms measured in debug mode
- */
 fz_pixmap *
 CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 {
@@ -178,104 +136,25 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	fz_page			*pPage;
 	fz_rect			bbox;
 	fz_rect			t_bounds;
-	/* pCtxClone = gPdf.pCtx; */
+	fz_irect		ibounds;
 
 	TracyCZoneNC(clone, "CloneContext", 0xffff00, 1)
 	pCtxClone = fz_clone_context(pCtx);
 	TracyCZoneEnd(clone);
 
 	TracyCZoneNC(lp, "LoadPage", 0x00ff00, 1)
-	fz_try(pCtx)
-		pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);
-	fz_catch(pCtx)
-	{
-		fz_report_error(pCtx);
-		fprintf(stderr, "Cannot load the page\n");
-		fprintf(stderr, "Info: zoom: %f\tDpi: %f\tFile: %s\n", sInfo->fZoom, sInfo->fDpi, pFile);
-		exit(1);
-	}
+	fz_try(pCtx) {pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart);}
+	fz_catch(pCtx) { fz_report_error(pCtx); exit(1); }
 	TracyCZoneEnd(lp);
 
 	bbox = fz_bound_page(pCtxClone, pPage);
 	ctm = fz_transform_page(bbox, gpZoom[gCurrentZoom], sInfo->fRotate);
-
 	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
-	fz_irect prout = fz_round_rect(fz_transform_rect(bbox, ctm));
-
-	int xleft = 0, yleft = 0;
-
-	gView3.nextView.h = ibounds.y1 - ibounds.y0;
-	gView3.nextView.w = ibounds.x1 - ibounds.x0;
-
-	/* ibounds.x0 = 100; */
-	if (gView3.nextView.x < 0)
-	{
-		xleft = ibounds.x1 - ibounds.x0;
-		ibounds.x0 = gView3.nextView.x * -1;
-	}
-	if (ibounds.x1 + gView3.nextView.x > gInst.width) 
-	{
-		ibounds.x1 = gInst.width - gView3.nextView.x;
-		if (xleft - ibounds.x1 > 0)
-		{
-			int tmp = xleft - ibounds.x1;
-			if (yleft - ibounds.y1 > gInst.width)
-				tmp = gInst.width - xleft - ibounds.x1;
-			ibounds.x1 += tmp;
-			if (ibounds.x1 <= 0)
-			{
-				printf("ibounds.x1 = %d\n", ibounds.x1);
-				ibounds.x1 = 0;
-			}
-			/* ibounds.x1 += xleft - ibounds.x1; */
-		}
-	}
-
-	// NOTE: CREATE NEW IBOUNDS ????? CUZ THIS FUCKS MY OPTI, NEED THE TEXTURE WIDTH AND HEIGHT TO MATCH
-	if (gView3.nextView.y < 0)
-	{
-		yleft = ibounds.y1 - ibounds.y0;
-		ibounds.y0 = gView3.nextView.y * -1;
-	}
-	if (ibounds.y1 + gView3.nextView.y > gInst.heigth)
-	{
-        /* 
-		 * HACK:
-		 * LOOOOOOOOOOOOOOOOOOL how the fuck did I figure that out ?????????????
-		 * (about to fall asleep while solving it XDDDDDDDDDDDDD)
-         */
-		ibounds.y1 = gInst.heigth - gView3.nextView.y;
-		printf("yleft - ibounds.1 = %d\n", yleft - ibounds.y1);
-		if (yleft - ibounds.y1 > 0 )
-		{
-			int tmp = yleft - ibounds.y1;
-			if (yleft - ibounds.y1 > gInst.heigth)
-				 tmp = yleft - ibounds.y1 - gInst.heigth;
-			ibounds.y1 += tmp;
-			if (ibounds.y1 <= 0)
-			{
-				printf("ibounds.y1 = %d\n", ibounds.y1);
-				ibounds.y1 = 0; 
-				printf("changed ibounds.y1 to %d\n", ibounds.y1);
-			}
-		}
-	}
-
-	gView3.nextView.h = ibounds.y1 - ibounds.y0;
-	gView3.nextView.w = ibounds.x1 - ibounds.x0;
-
-	xleft = 0;
-	yleft = 0;
-
-	printf("gInst.height %d\t gInst.width %d\n", gInst.heigth, gInst.width);
-	printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
-	printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
 
 	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
 	pPix = fz_new_pixmap_with_bbox(pCtxClone, fz_device_rgb(pCtxClone), ibounds, NULL, 0);
 	TracyCZoneEnd(pix);
 
-	/* NOTE: According to official docs, this function shouldn't be used and is horrible  */
 	TracyCZoneNC(pixClear, "ClearPixMapWithValue", 0xccffcc, 1)
 	/* fz_clear_pixmap_rect_with_value(pCtxClone, pPix, 255, ibounds); */
 	fz_clear_pixmap_with_value(pCtxClone, pPix, 255);
@@ -291,12 +170,50 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	TracyCZoneNC(drop, "Dropping everything", 0x00fff0, 1)
 	fz_close_device(pCtxClone, pDev);
 	fz_drop_device(pCtxClone, pDev);
-	fz_drop_page(pCtx, pPage); // NOTE: should we always drop that ?
+	fz_drop_page(pCtx, pPage);
 	fz_drop_context(pCtxClone);
-	/* fz_drop_document(pCtxClone, pDoc); */
 	TracyCZoneEnd(drop);
 
 	TracyCZoneEnd(createpdf);
+	return pPix;
+}
+
+fz_pixmap *
+RenderPdfPage(fz_context *pCtx, const char *pFile, sInfo *sInfo, fz_document *pDoc)
+{
+	fz_context		*pCtxClone;
+	fz_pixmap		*pPix;
+	fz_device		*pDev;
+	fz_matrix		ctm;
+	fz_page			*pPage;
+	fz_rect			bbox;
+	fz_rect			t_bounds;
+	fz_irect		ibounds;
+
+	pCtxClone = fz_clone_context(pCtx);
+
+	fz_try(pCtx) { pPage = fz_load_page(pCtxClone, pDoc, sInfo->pageStart); }
+	fz_catch(pCtx) { fz_report_error(pCtx); fprintf(stderr, "Cannot load the page\n"); exit(1); }
+
+	bbox = fz_bound_page(pCtxClone, pPage);
+	ctm = fz_transform_page(bbox, sInfo->fDpi, sInfo->fRotate);
+	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
+
+	pPix = fz_new_pixmap_with_bbox(pCtxClone, fz_device_rgb(pCtxClone), ibounds, NULL, 0);
+
+	/* NOTE: According to official docs, this function shouldn't be used and is horrible  */
+	/* fz_clear_pixmap_rect_with_value(pCtxClone, pPix, 255, ibounds); */
+	fz_clear_pixmap_with_value(pCtxClone, pPix, 255);
+
+	pDev = fz_new_draw_device(pCtxClone, ctm, pPix);
+	/* pDev = fz_new_draw_device_with_bbox(pCtxClone, ctm, pPix, &ibounds); */
+
+	fz_run_page(pCtxClone, pPage, pDev, fz_identity, NULL);
+
+	fz_close_device(pCtxClone, pDev);
+	fz_drop_device(pCtxClone, pDev);
+	fz_drop_page(pCtx, pPage); // NOTE: should we always drop that ?
+	fz_drop_context(pCtxClone);
 	return pPix;
 }
 
@@ -319,13 +236,10 @@ CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 	LocksCtx.user = PdfCtx->pFzMutexes;
 	LocksCtx.lock = myLockMutex;
 	LocksCtx.unlock = myUnlockMutex;
-	/* Create a context to hold the exception stack and various caches. */
+
 	PdfCtx->pCtx = fz_new_context(NULL, &LocksCtx, FZ_STORE_UNLIMITED);
-	if (!PdfCtx->pCtx)
-	{
-		fprintf(stderr, "cannot create mupdf context\n"); 
-		return NULL; 
-	}
+	if (!PdfCtx->pCtx) { fprintf(stderr, "cannot create mupdf context\n"); return NULL; }
+
 	fz_try(PdfCtx->pCtx)
 		fz_register_document_handlers(PdfCtx->pCtx);
 	fz_catch(PdfCtx->pCtx)
@@ -334,31 +248,20 @@ CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 	fz_try(PdfCtx->pCtx)
 		PdfCtx->pDoc = fz_open_document(PdfCtx->pCtx, pFile);
 	fz_catch(PdfCtx->pCtx)
-		goto MyErrorOpen;
+		goto myError;
 
 	fz_try(PdfCtx->pCtx)
 		PdfCtx->nbOfPages = fz_count_pages(PdfCtx->pCtx, PdfCtx->pDoc);
 	fz_catch(PdfCtx->pCtx)
-		goto myErrorCount;
+		goto myError;
 
-    /*
-	 * fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	 * PdfCtx->pDoc = NULL;
-     */
 	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
 	PdfCtx->viewingPage = sInfo.pageStart;
 	return PdfCtx;
 
-myErrorCount:
-	fprintf(stderr, "cannot count number of pages\n");
-	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	goto MyErrorEnd;
-MyErrorOpen:
-	fprintf(stderr, "cannot open document\n");
-	goto MyErrorEnd;
 myErrorHandle:
-	fprintf(stderr, "cannot register document handlers\n");
-MyErrorEnd:
+	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
+myError:
 	fz_report_error(PdfCtx->pCtx);
 	fz_drop_context(PdfCtx->pCtx);
 	return NULL;
@@ -388,44 +291,6 @@ LoadPagesArray(size_t nbOfPages)
 			pPages[i].views[j] = pPages[i].position;
 	}
 	return pPages;
-}
-
-fz_matrix
-FzCreateViewCtm(fz_rect mediabox, float zoom, int rotation)
-{
-	fz_matrix ctm = fz_pre_scale(fz_rotate((float)rotation), zoom, zoom);
-
-	rotation = (rotation + 360) % 360;
-	if (90 == rotation) ctm = fz_pre_translate(ctm, 0, -1 * mediabox.y1);
-	else if (180 == rotation) ctm = fz_pre_translate(ctm, -1 * mediabox.x1, -1 * mediabox.y1);
-	else if (270 == rotation) ctm = fz_pre_translate(ctm, -1 * mediabox.x1, 0);
-
-	if (fz_matrix_expansion(ctm) == 0) return fz_identity;
-	return ctm;
-}
-
-fz_matrix
-viewctm(fz_context *pCtx, fz_page* pPage, float zoom, int rotation)
-{
-    fz_rect bounds;
-    fz_var(bounds);
-    fz_try(pCtx) {
-        bounds = fz_bound_page(pCtx, pPage);
-    }
-    fz_catch(pCtx) {
-        fz_report_error(pCtx);
-        bounds = (fz_rect){};
-    }
-    if (fz_is_empty_rect(bounds)) {
-        bounds = (fz_rect){0, 0, 612, 792};
-    }
-    return FzCreateViewCtm(bounds, zoom, rotation);
-}
-
-fz_rect
-FzRectFromSDL(SDL_FRect rect)
-{
-	return (fz_rect){ .x0 = rect.x, .y0 = rect.y, .x1 = rect.x + rect.w, .y1 = rect.y + rect.h };
 }
 
 int
@@ -534,155 +399,3 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
 	}
     return 0;
 }
-
-/*
- * TODO: add mechanism to privilege creation of actually visible textures (gPdf.viewingPage)
- * As well as destroying "timed out" cached textures..
- */
-void
-UpdateTextures(SDL_Renderer *pRenderer, int index)
-{
-	if (index == -1)
-		return;
-	SDL_Texture *pTmp;
-	pTmp = PixmapToTexture(pRenderer, gPdf.pPages[index].pPix, gPdf.pCtx, pTmp);
-	if (!pTmp)
-	{
-		fprintf(stderr, "mupdf.c:22:\t %s\n", SDL_GetError());
-		exit(1); // probably should not do that ?
-	}
-	gPdf.pPages[index].pTexture = pTmp;
-	gPdf.pPages[index].bPpmCache = true;
-	gRender = true;
-	/*
-	 * TODO: Measure the time it takes to query
-	 * in case it's not negligible
-	 */
-	int w = 0, h = 0; 
-	SDL_QueryTexture(gPdf.pPages[index].pTexture, NULL, NULL, &w, &h);
-    /*
-	 * gView3.nextView.w = w;
-	 * gView3.nextView.h = h;
-	 * if (gView3.nextView.x + gView3.nextView.w <= 0)
-	 * 	gView3.nextView.x = (gInst.width / 2) - (gView3.nextView.x / 2);
-	 * if (gView3.nextView.y + gView3.nextView.h <= 0)
-	 * 	gView3.nextView.y = (gInst.height / 2) - (gView3.nextView.h / 2);
-	 * gView3.oldView.x = gView3.currentView.x;
-	 * gView3.oldView.y = gView3.currentView.y;
-	 * gView3.oldView.w = gView3.currentView.w;
-	 * gView3.oldView.h = gView3.currentView.h;
-     */
-}
-
-
-/*
- * PDFContext
- * CreatePDF(char *input, int page_number, float zoom, float rotate)
- * {
- * 	int page_count;
- * 	fz_context *ctx;
- * 	fz_document *doc;
- * 	fz_pixmap *pix;
- * 	fz_matrix ctm;
- * 	int x, y;
- * 	PDFContext pdf = {0};
- * 	pdf.ppPix = malloc(sizeof(fz_pixmap*) * MAX_PIXMAPS);
- * 	pdf.zoom = zoom;
- * 	pdf.rotate = rotate;
- * 
- * 	fz_locks_context locks;
- * 	Mutex	*pMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
- * 
- * 	for (int i = 0; i < FZ_LOCK_MAX; i++)
- * 	{
- * 		#<{(| pdf.pMutexes[i] = myCreateMutex(&pdf.pMutexes[i]); |)}>#
- * 		#<{(| if (!ppMutexes[i]) |)}>#
- * 		if(myCreateMutex(&pMutexes[i]) != 0)
- * 		{
- * 			fprintf(stderr, "Could not create mutex\n");
- * 			exit(1);
- * 		}
- * 	}
- * 	pdf.pFzMutexes = pMutexes;
- * 	locks.user = pdf.pFzMutexes;
- * 	locks.lock = myLockMutex;
- * 	locks.unlock = myUnlockMutex;
- * 
- * 	#<{(| Create a context to hold the exception stack and various caches. |)}>#
- * 	ctx = fz_new_context(NULL, &locks, FZ_STORE_UNLIMITED);
- * 	if (!ctx)
- * 	{ fprintf(stderr, "cannot create mupdf context\n"); return pdf; }
- * 	#<{(| Register the default file types to handle. |)}>#
- * 	fz_try(ctx)
- * 		fz_register_document_handlers(ctx);
- * 	fz_catch(ctx)
- * 	{
- * 		fz_report_error(ctx);
- * 		fprintf(stderr, "cannot register document handlers\n");
- * 		fz_drop_context(ctx);
- * 		return pdf;
- * 	}
- * 
- * 	fz_try(ctx)
- * 		doc = fz_open_document(ctx, input);
- * 	fz_catch(ctx)
- * 	{
- * 		fz_report_error(ctx);
- * 		fprintf(stderr, "cannot open document\n");
- * 		fz_drop_context(ctx);
- * 		return pdf;
- * 	}
- * 
- * 	fz_try(ctx)
- * 		page_count = fz_count_pages(ctx, doc);
- * 	fz_catch(ctx)
- * 	{
- * 		fz_report_error(ctx);
- * 		fprintf(stderr, "cannot count number of pages\n");
- * 		fz_drop_document(ctx, doc);
- * 		fz_drop_context(ctx);
- * 		return pdf;
- * 	}
- * 
- * 	if (page_number < 0 || page_number >= page_count)
- * 	{
- * 		fprintf(stderr, "page number out of range:"
- * 				"%d (page count %d)\n", page_number + 1, page_count);
- * 
- * 		fz_drop_document(ctx, doc);
- * 		fz_drop_context(ctx);
- * 		return pdf;
- * 	}
- * 	pdf.nbOfPages = page_count;
- * 	#<{(| Compute a transformation matrix for the zoom and rotation desired. |)}>#
- * 	#<{(| The default resolution without scaling is 72 dpi. |)}>#
- * 	ctm = fz_scale(zoom / 100, zoom / 100);
- * 	ctm = fz_pre_rotate(ctm, rotate);
- * 
- * 	#<{(| Render page to an RGB pixmap. |)}>#
- * 	fz_try(ctx)
- * 		pix = fz_new_pixmap_from_page_number(ctx,
- * 				doc, page_number, ctm, fz_device_rgb(ctx), 0);
- * 
- * 	fz_catch(ctx)
- * 	{
- * 		fz_report_error(ctx);
- * 		fprintf(stderr, "cannot render page\n");
- * 		fz_drop_document(ctx, doc);
- * 		fz_drop_context(ctx);
- * 		return pdf;
- * 	}
- * 	#<{(| fz_drop_pixmap(ctx, pix); |)}>#
- * 	#<{(| fz_drop_context(ctx); |)}>#
- * 	pdf.ppPix[0] = pix;
- * 	pdf.pCtx = ctx;
- * 	pdf.nbPagesRetrieved = 1;
- * 	pdf.viewingPage = 1;
- * 	pdf.pFile = input;
- * 	fz_drop_document(ctx, doc);
- * 	return pdf;
- * 
- * }
- */
-
-

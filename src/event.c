@@ -114,7 +114,6 @@ ReloadPage(void)
 	if (!gInst.pMainTexture)
 		exit(1);
 	gPdf.pPages[i].bTextureCache = true;
-	gRender = true;
 }
 
 int LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
@@ -145,10 +144,10 @@ Event(SDL_Event *e)
 				MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView);
 				break;
 			case (SDLK_RIGHT):
-				ChangePage(NEXT_P);
+				/* ChangePage(NEXT_P); */
 				break;
 			case (SDLK_LEFT):
-				ChangePage(BACK_P);
+				/* ChangePage(BACK_P); */
 				break;
 			case (SDLK_3):
 				/* LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo); */
@@ -157,10 +156,12 @@ Event(SDL_Event *e)
 	}
 	else if (e->type == SDL_MOUSEWHEEL)
 	{
-		if (e->wheel.y > 0)
-			ChangePage(BACK_P);
-		else if (e->wheel.y < 0)
-			ChangePage(NEXT_P);
+        /*
+		 * if (e->wheel.y > 0)
+		 * 	ChangePage(BACK_P);
+		 * else if (e->wheel.y < 0)
+		 * 	ChangePage(NEXT_P);
+         */
 	}
 }
 
@@ -238,7 +239,6 @@ nothing:
 		SDL_DestroyTexture(gInst.pMainTexture);
 		gInst.pMainTexture = NULL;
 	}
-	gRender = true;
 	ReloadPage();
 	return ;
     /*
@@ -271,8 +271,8 @@ event(SDL_Event *es)
 		if (e.key.keysym.sym == SDLK_ESCAPE) { gInst.running = false;}
 
 		else if (arr[SDL_SCANCODE_LCTRL] && arr[SDL_SCANCODE_O]) { int tmp = gPdf.viewingPage; gPdf.viewingPage = oldJump; oldJump = tmp; }
-		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_K]) { fscalex /= 1.1f; if (gView.w <= 0.1f || gView.h <= 0.1f) gView.w = gInst.width; gView.h = gInst.heigth; resize();}
-		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_J]) { fscalex *= 1.1f; if (gView.w >= 100000.0f || gView.h <= 100000.0f) gView.w = gInst.width; gView.h = gInst.heigth; resize();}
+		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_K]) { fscalex /= 1.1f; if (gView.w <= 0.1f || gView.h <= 0.1f) gView.w = gInst.width; gView.h = gInst.heigth; }
+		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_J]) { fscalex *= 1.1f; if (gView.w >= 100000.0f || gView.h <= 100000.0f) gView.w = gInst.width; gView.h = gInst.heigth; }
 		 
 		else if (e.key.keysym.sym == SDLK_k) { gView.y += (300 / fscalex); if (gView.y >= 4000000000) gView.y = 0.0f;}
 		else if (e.key.keysym.sym == SDLK_j) { gView.y -= (300 / fscalex); if (gView.y < 0.0f) gView.y = 0.0f;}
@@ -290,7 +290,7 @@ event(SDL_Event *es)
 				gCurrentZoom = 0;
 			printf("CurrentZoom[%d]: %f\n", gCurrentZoom, gpZoom[gCurrentZoom]);
 			/* gZoom /= 1.2f; if (gZoom <= 0.1f) {gZoom = 0.1f;} resize(); printf("gZoom: %f\n", gZoom); */
-			resize();
+			/* resize(); */
 		}
 		else if (e.key.keysym.sym == SDLK_RIGHT)
 		{ 
@@ -299,7 +299,7 @@ event(SDL_Event *es)
 				gCurrentZoom = gSizeZoomArray - 1;
 			printf("CurrentZoom[%d]: %f\n", gCurrentZoom, gpZoom[gCurrentZoom]);
 			/* gZoom *= 1.2f; if (gZoom > 50.0f) {gZoom = 50.0f;} resize(); printf("gZoom: %f\n", gZoom); */
-			resize();
+			/* resize(); */
 		}
 
 		else if (e.key.keysym.sym == SDLK_SEMICOLON && e.key.keysym.sym == SDLK_LSHIFT) { mode = 2; }
