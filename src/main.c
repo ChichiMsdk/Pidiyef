@@ -97,6 +97,7 @@ void
 AppUpdate(void(*Update)(SDL_Event *e), SDL_Event *e)
 {
 	Update(e);
+	/* SDL_Delay(16); */
 }
 
 void

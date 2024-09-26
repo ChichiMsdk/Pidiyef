@@ -195,9 +195,11 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 	int x3 = fz_pixmap_x(pCtx, pPix);
 	int y3 = fz_pixmap_y(pCtx, pPix);
 	int components = fz_pixmap_components(pCtx, pPix);
-	printf("vrai w: %d\th: %d\tx: %d\t y: %d\n", width, height, x3, y3);
-	printf("ibounds w: %d\th: %d\tx: %d\t y: %d\n",
-			ibounds.x1 - ibounds.x0, ibounds.y1 - ibounds.y0, ibounds.x0, ibounds.y0);
+    /*
+	 * printf("vrai w: %d\th: %d\tx: %d\t y: %d\n", width, height, x3, y3);
+	 * printf("ibounds w: %d\th: %d\tx: %d\t y: %d\n",
+	 * 		ibounds.x1 - ibounds.x0, ibounds.y1 - ibounds.y0, ibounds.x0, ibounds.y0);
+     */
 
 	if (SDL_LockTexture(pTexture, NULL, &pixels, &pitch) != 0)
 	{
@@ -237,7 +239,7 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 	{
 		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
 	}
-	printf("y2: %d\n", y);
+	/* printf("y2: %d\n", y); */
 	SDL_UnlockTexture(pTexture);
     /* if (SDL_UpdateTexture(pTexture, NULL, pPix->samples, width * components)) return NULL; */
 	TracyCZoneEnd(ctx2);
@@ -290,6 +292,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
     
 	/* ibounds.x0 = 100; */
 	/* if (ibounds.x1 + gView3.nextView.x > gInst.width)  */
+	/* if (ibounds.x1 > gInst.width && gView3.nextView.x > 0)  */
 	if (ibounds.x1 > gInst.width) 
 		ibounds.x1 = gInst.width - gView3.nextView.x;
 	if (gView3.nextView.x < 0)
@@ -299,6 +302,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	}
 
 	/* if (ibounds.y1 + gView3.nextView.y > gInst.height) */
+	/* if (ibounds.y1 > gInst.height && gView3.nextView.y > 0) */
 	if (ibounds.y1 > gInst.height)
 	{
 		ibounds.y1 = gInst.height - gView3.nextView.y;
@@ -310,8 +314,10 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 
 	gView3.nextView.w = ibounds.x1 - ibounds.x0;
 	gView3.nextView.h = ibounds.y1 - ibounds.y0;
-	printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
-	printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
+    /*
+	 * printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
+	 * printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
+     */
 
 	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)
 	pPix = fz_new_pixmap_with_bbox(pCtxClone, fz_device_rgb(pCtxClone), ibounds, NULL, 0);

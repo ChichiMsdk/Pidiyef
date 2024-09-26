@@ -22,12 +22,13 @@ CPPLIBS = -lstdc++
 LIB_PATH =
 
 CFLAGS =-DPLATFORM_LINUX
+CFLAGS += -g3 -O3 -fdeclspec -MJ$(JSON_FILE)
+CFLAGS +=-DTRACY_ENABLE
 # -fsanitize=address
-# -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
-CFLAGS += -g3 -O2 -fdeclspec -MJ$(JSON_FILE)
 CPPFLAGS =-DPLATFORM_LINUX -Wno-format
+CPPFLAGS +=-DTRACY_ENABLE
 # -fsanitize=address
 # -DTRACY_ENABLE 
 
