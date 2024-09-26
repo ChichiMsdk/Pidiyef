@@ -125,7 +125,7 @@ MegaLoop(void)
 		};
 		fz_rect bbox = FzRectFromSDL(pageBbox);
 
-		if (tmp.y <= gInst.height && tmp.y + tmp.h > 0)
+		if (tmp.y <= gInst.heigth && tmp.y + tmp.h > 0)
 		{
 			/* gVisible.array[gVisible.count + tmpCount] = i; */
 			tmpCount++;

@@ -124,7 +124,7 @@ Event(SDL_Event *e)
 {
 	SDL_PollEvent(e);
 	/* FIXME: SDL seems not to handle windows event properly ?..*/
-	SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.height);
+	SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.heigth);
 
 	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
 	if (e->type == SDL_QUIT) { gInst.running = false; }
@@ -189,8 +189,8 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 		case (SDLK_j):
 			{
 				pRect->y += MOVE; 
-				if (pRect->y >= (gInst.height))
-					pRect->y = (gInst.height) - 1;
+				if (pRect->y >= (gInst.heigth))
+					pRect->y = (gInst.heigth) - 1;
 				goto nothing;
 			}
 		case (SDLK_k):
@@ -264,15 +264,15 @@ event(SDL_Event *es)
 
 	if (e.type == SDL_QUIT) {gInst.running = false;}
 	// reset the page's positions
-	else if (e.type == SDL_WINDOWEVENT_RESIZED){ SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.height); printf("%d\t%d\n", gInst.width, gInst.height); }
-	else if (e.type == SDL_WINDOWEVENT_SIZE_CHANGED) { SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.height); printf("%d\t%d\n", gInst.width, gInst.height); }
+	else if (e.type == SDL_WINDOWEVENT_RESIZED){ SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.heigth); printf("%d\t%d\n", gInst.width, gInst.heigth); }
+	else if (e.type == SDL_WINDOWEVENT_SIZE_CHANGED) { SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.heigth); printf("%d\t%d\n", gInst.width, gInst.heigth); }
 	else if (e.type == SDL_KEYDOWN)
 	{ 
 		if (e.key.keysym.sym == SDLK_ESCAPE) { gInst.running = false;}
 
 		else if (arr[SDL_SCANCODE_LCTRL] && arr[SDL_SCANCODE_O]) { int tmp = gPdf.viewingPage; gPdf.viewingPage = oldJump; oldJump = tmp; }
-		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_K]) { fscalex /= 1.1f; if (gView.w <= 0.1f || gView.h <= 0.1f) gView.w = gInst.width; gView.h = gInst.height; resize();}
-		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_J]) { fscalex *= 1.1f; if (gView.w >= 100000.0f || gView.h <= 100000.0f) gView.w = gInst.width; gView.h = gInst.height; resize();}
+		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_K]) { fscalex /= 1.1f; if (gView.w <= 0.1f || gView.h <= 0.1f) gView.w = gInst.width; gView.h = gInst.heigth; resize();}
+		else if (arr[SDL_SCANCODE_LSHIFT] && arr[SDL_SCANCODE_J]) { fscalex *= 1.1f; if (gView.w >= 100000.0f || gView.h <= 100000.0f) gView.w = gInst.width; gView.h = gInst.heigth; resize();}
 		 
 		else if (e.key.keysym.sym == SDLK_k) { gView.y += (300 / fscalex); if (gView.y >= 4000000000) gView.y = 0.0f;}
 		else if (e.key.keysym.sym == SDLK_j) { gView.y -= (300 / fscalex); if (gView.y < 0.0f) gView.y = 0.0f;}

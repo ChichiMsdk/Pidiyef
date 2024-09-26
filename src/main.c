@@ -28,7 +28,7 @@
 	 * - Bookmark a page to put it on the left (in scratch form so we can draw?)
 	 */
 
-Instance gInst = {.running = true, .width = 1300, .height = 900, .pWin = NULL, .pMutexes = NULL};
+Instance gInst = {.running = true, .width = 1300, .heigth = 900, .pWin = NULL, .pMutexes = NULL};
 int gRender = false;
 EventQueue gEventQueue = {0};
 PDFView gView3 = {0};
@@ -132,14 +132,16 @@ Version1(SDL_Event *e)
 		{
 			SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture,
 					NULL, &tmp);
-			SDL_SetRenderDrawColor(gInst.pRenderer, 0xaa, 0xaa, 0x00, 100);
-			SDL_Rect defaultRect = {
-				.x = gView3.currentView.x * 2,
-				.y = gView3.currentView.y,
-				.w = gView3.currentView.w / 100,
-				.h = gInst.height
-			};
-			SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
+            /*
+			 * SDL_SetRenderDrawColor(gInst.pRenderer, 0xaa, 0xaa, 0x00, 100);
+			 * SDL_Rect defaultRect = {
+			 * 	.x = gView3.currentView.x * 2,
+			 * 	.y = gView3.currentView.y,
+			 * 	.w = gView3.currentView.w / 100,
+			 * 	.h = gInst.heigth
+			 * };
+			 * SDL_RenderFillRect(gInst.pRenderer, &defaultRect);
+             */
 		}
 	    /*
 		 * if (isTextureCached == true)

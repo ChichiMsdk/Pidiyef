@@ -21,7 +21,7 @@ typedef struct Instance
 	SDL_Texture		*pMainTexture;
 	TextureMap		*pTextureMap;
 	int				width;
-	int				height;
+	int				heigth;
 	uint64_t		nbThreads;
 	Mutex			*pMutexes;
 	int				running;

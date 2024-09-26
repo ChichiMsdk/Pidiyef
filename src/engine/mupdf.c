@@ -78,69 +78,6 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
   those pages to a bitmap and display those bitmaps.
 */
 
-/*
- * TODO: change error handling here
- */
-void *
-CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
-{
-	PdfCtx->pFile = pFile;
-	PdfCtx->DefaultInfo = sInfo;
-	fz_locks_context LocksCtx;
-	PdfCtx->pFzMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
-
-	for (int i = 0; i < FZ_LOCK_MAX; i++)
-	{
-		if(myCreateMutex(&PdfCtx->pFzMutexes[i]) != 0)
-		{ fprintf(stderr, "Could not create mutex\n"); exit(1); }
-	}
-	LocksCtx.user = PdfCtx->pFzMutexes;
-	LocksCtx.lock = myLockMutex;
-	LocksCtx.unlock = myUnlockMutex;
-	/* Create a context to hold the exception stack and various caches. */
-	PdfCtx->pCtx = fz_new_context(NULL, &LocksCtx, FZ_STORE_UNLIMITED);
-	if (!PdfCtx->pCtx)
-	{
-		fprintf(stderr, "cannot create mupdf context\n"); 
-		return NULL; 
-	}
-	fz_try(PdfCtx->pCtx)
-		fz_register_document_handlers(PdfCtx->pCtx);
-	fz_catch(PdfCtx->pCtx)
-		goto myErrorHandle;
-
-	fz_try(PdfCtx->pCtx)
-		PdfCtx->pDoc = fz_open_document(PdfCtx->pCtx, pFile);
-	fz_catch(PdfCtx->pCtx)
-		goto MyErrorOpen;
-
-	fz_try(PdfCtx->pCtx)
-		PdfCtx->nbOfPages = fz_count_pages(PdfCtx->pCtx, PdfCtx->pDoc);
-	fz_catch(PdfCtx->pCtx)
-		goto myErrorCount;
-
-    /*
-	 * fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	 * PdfCtx->pDoc = NULL;
-     */
-	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
-	PdfCtx->viewingPage = sInfo.pageStart;
-	return PdfCtx;
-
-myErrorCount:
-	fprintf(stderr, "cannot count number of pages\n");
-	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
-	goto MyErrorEnd;
-MyErrorOpen:
-	fprintf(stderr, "cannot open document\n");
-	goto MyErrorEnd;
-myErrorHandle:
-	fprintf(stderr, "cannot register document handlers\n");
-MyErrorEnd:
-	fz_report_error(PdfCtx->pCtx);
-	fz_drop_context(PdfCtx->pCtx);
-	return NULL;
-}
 
 /*
  * NOTE: Should probable clone the ctx here since we want heavy multithreading..
@@ -265,19 +202,10 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
 	fz_irect prout = fz_round_rect(fz_transform_rect(bbox, ctm));
 
-    /*
-	 * gView3.currentView.w = ibounds.x1 - ibounds.x0;
-	 * gView3.currentView.h = ibounds.y1 - ibounds.y0;
-	 * gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
-	 * gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
-     */
-
 	int xleft = 0, yleft = 0;
 
 	gView3.nextView.h = ibounds.y1 - ibounds.y0;
 	gView3.nextView.w = ibounds.x1 - ibounds.x0;
-	gView3.nextView.w += xleft;
-	gView3.nextView.h += yleft;
 
 	/* ibounds.x0 = 100; */
 	if (gView3.nextView.x < 0)
@@ -288,11 +216,20 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	if (ibounds.x1 + gView3.nextView.x > gInst.width) 
 	{
 		ibounds.x1 = gInst.width - gView3.nextView.x;
-		printf("yleft - ibounds.1 = %d\n", yleft - ibounds.y1);
 		if (xleft - ibounds.x1 > 0)
-			ibounds.x1 += xleft - ibounds.x1;
+		{
+			int tmp = xleft - ibounds.x1;
+			if (yleft - ibounds.y1 > gInst.width)
+				tmp = gInst.width - xleft - ibounds.x1;
+			ibounds.x1 += tmp;
+			if (ibounds.x1 <= 0)
+			{
+				printf("ibounds.x1 = %d\n", ibounds.x1);
+				ibounds.x1 = 0;
+			}
+			/* ibounds.x1 += xleft - ibounds.x1; */
+		}
 	}
-
 
 	// NOTE: CREATE NEW IBOUNDS ????? CUZ THIS FUCKS MY OPTI, NEED THE TEXTURE WIDTH AND HEIGHT TO MATCH
 	if (gView3.nextView.y < 0)
@@ -300,17 +237,28 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 		yleft = ibounds.y1 - ibounds.y0;
 		ibounds.y0 = gView3.nextView.y * -1;
 	}
-	if (ibounds.y1 + gView3.nextView.y > gInst.height)
+	if (ibounds.y1 + gView3.nextView.y > gInst.heigth)
 	{
         /* 
 		 * HACK:
 		 * LOOOOOOOOOOOOOOOOOOL how the fuck did I figure that out ?????????????
 		 * (about to fall asleep while solving it XDDDDDDDDDDDDD)
          */
-		ibounds.y1 = gInst.height - gView3.nextView.y;
+		ibounds.y1 = gInst.heigth - gView3.nextView.y;
 		printf("yleft - ibounds.1 = %d\n", yleft - ibounds.y1);
-		if (yleft - ibounds.y1 > 0)
-			ibounds.y1 += yleft - ibounds.y1;
+		if (yleft - ibounds.y1 > 0 )
+		{
+			int tmp = yleft - ibounds.y1;
+			if (yleft - ibounds.y1 > gInst.heigth)
+				 tmp = yleft - ibounds.y1 - gInst.heigth;
+			ibounds.y1 += tmp;
+			if (ibounds.y1 <= 0)
+			{
+				printf("ibounds.y1 = %d\n", ibounds.y1);
+				ibounds.y1 = 0; 
+				printf("changed ibounds.y1 to %d\n", ibounds.y1);
+			}
+		}
 	}
 
 	gView3.nextView.h = ibounds.y1 - ibounds.y0;
@@ -319,7 +267,7 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	xleft = 0;
 	yleft = 0;
 
-	printf("gInst.height %d\t gInst.width %d\n", gInst.height, gInst.width);
+	printf("gInst.height %d\t gInst.width %d\n", gInst.heigth, gInst.width);
 	printf("ibounds x0: %d\ty0: %d\tx1: %d\ty1: %d\n", ibounds.x0, ibounds.y0, ibounds.x1, ibounds.y1);
 	printf("view x0: %f\ty0: %f\tw: %f\th: %f\n", gView3.nextView.x, gView3.nextView.y, gView3.nextView.w, gView3.nextView.h);
 
@@ -350,6 +298,70 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 
 	TracyCZoneEnd(createpdf);
 	return pPix;
+}
+
+/*
+ * TODO: change error handling here
+ */
+void *
+CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
+{
+	PdfCtx->pFile = pFile;
+	PdfCtx->DefaultInfo = sInfo;
+	fz_locks_context LocksCtx;
+	PdfCtx->pFzMutexes = malloc(sizeof(Mutex) * FZ_LOCK_MAX);
+
+	for (int i = 0; i < FZ_LOCK_MAX; i++)
+	{
+		if(myCreateMutex(&PdfCtx->pFzMutexes[i]) != 0)
+		{ fprintf(stderr, "Could not create mutex\n"); exit(1); }
+	}
+	LocksCtx.user = PdfCtx->pFzMutexes;
+	LocksCtx.lock = myLockMutex;
+	LocksCtx.unlock = myUnlockMutex;
+	/* Create a context to hold the exception stack and various caches. */
+	PdfCtx->pCtx = fz_new_context(NULL, &LocksCtx, FZ_STORE_UNLIMITED);
+	if (!PdfCtx->pCtx)
+	{
+		fprintf(stderr, "cannot create mupdf context\n"); 
+		return NULL; 
+	}
+	fz_try(PdfCtx->pCtx)
+		fz_register_document_handlers(PdfCtx->pCtx);
+	fz_catch(PdfCtx->pCtx)
+		goto myErrorHandle;
+
+	fz_try(PdfCtx->pCtx)
+		PdfCtx->pDoc = fz_open_document(PdfCtx->pCtx, pFile);
+	fz_catch(PdfCtx->pCtx)
+		goto MyErrorOpen;
+
+	fz_try(PdfCtx->pCtx)
+		PdfCtx->nbOfPages = fz_count_pages(PdfCtx->pCtx, PdfCtx->pDoc);
+	fz_catch(PdfCtx->pCtx)
+		goto myErrorCount;
+
+    /*
+	 * fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
+	 * PdfCtx->pDoc = NULL;
+     */
+	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
+	PdfCtx->viewingPage = sInfo.pageStart;
+	return PdfCtx;
+
+myErrorCount:
+	fprintf(stderr, "cannot count number of pages\n");
+	fz_drop_document(PdfCtx->pCtx, PdfCtx->pDoc);
+	goto MyErrorEnd;
+MyErrorOpen:
+	fprintf(stderr, "cannot open document\n");
+	goto MyErrorEnd;
+myErrorHandle:
+	fprintf(stderr, "cannot register document handlers\n");
+MyErrorEnd:
+	fz_report_error(PdfCtx->pCtx);
+	fz_drop_context(PdfCtx->pCtx);
+	return NULL;
 }
 
 PDFPage *
