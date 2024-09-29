@@ -22,24 +22,25 @@ LIBS = -lSDL2main -lSDL2 -lSDL2_image -llibmupdf -llibthirdparty -luser32
 # -lclang_rt.asan_dynamic-x86_64
 
 LIB_PATH =-LC:/Lib/SDL2/lib
-LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Release
+# LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Release
 # LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Profiler
-# LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
+LIB_PATH +=-LC:/Lib/mupdf-1.24.9-source/platform/win32/x64/Debug
 
 CFLAGS =-nodefaultlibs
-# CFLAGS +=-fms-runtime-lib=dll_dbg
+# CFLAGS +=-mavx -msse -msse2
+CFLAGS +=-fms-runtime-lib=dll_dbg
 
 CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
-CFLAGS += -DTRACY_ENABLE
+# CFLAGS += -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
 LIBFLAGS =-Wl,-nodefaultlib:libcmt
-#-fms-runtime-lib=dll_dbg
+LIBFLAGS +=-fms-runtime-lib=dll_dbg
 
 CPPFLAGS =-O0 -DPLATFORM_WINDOWS -Wno-format -nodefaultlibs
-CPPFLAGS +=-fms-runtime-lib=dll
 CPPFLAGS +=-DTRACY_ENABLE
-# CPPFLAGS +=-fms-runtime-lib=dll_dbg
+CPPFLAGS +=-fms-runtime-lib=dll_dbg
+# CPPFLAGS +=-fms-runtime-lib=dll
 
 # CPPLIBFLAGS =-Wl,-nodefaultlib:libcmt -fms-runtime-lib=dll_dbg -lmsvcrtd 
 
