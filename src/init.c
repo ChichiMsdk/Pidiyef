@@ -40,7 +40,7 @@ Init(int ac, char **av, Instance *inst)
 		fprintf(stderr, "Renderer failed!\nSDL_Error: %s\n", SDL_GetError());
 		exit(1);
 	}
-	if(SDL_RenderSetVSync(renderer, 0))
+	if(SDL_RenderSetVSync(renderer, 1))
 	{
 		fprintf(stderr, "Vsync failed!\nSDL_Error: %s\n", SDL_GetError());
 	}
