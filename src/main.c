@@ -13,19 +13,15 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-typedef struct Canvas
-{
-	int x, y;
-	int w, h;
-	SDL_Color color;
-}Canvas;
 #define ROYAL_BLUE (SDL_Color) {.r = 0x41, .g = 0x69, .b = 0xE1, .a = 255}
 #define DEEPSEA_BLUE (SDL_Color) {.r = 0x12, .g = 0x34, .b = 0x56, .a = 255}
 #define SCARLET_RED (SDL_Color) {.r = 0x90, .g = 0x0D, .b = 0x09, .a = 255}
 #define SACRAMENTO_GREEN (SDL_Color) {.r = 0x04, .g = 0x39, .b = 0x27, .a = 255}
 #define GRAY (SDL_Color) {.r = 0x80, .g = 0x80, .b = 0x80, .a = 255}
 
+
 Canvas gCanvas = {0};
+float gScale = 1.0f;
 
 Instance gInst = {.running = true, .width = 1300, .heigth = 900, .pWin = NULL, .pMutexes = NULL};
 
@@ -41,39 +37,19 @@ void Version1(SDL_Event *e);
 void Version2(SDL_Event *e);
 const char* __asan_default_options() { return "detect_leaks=0"; }
 
+/*
+ * TODO: Make my own variadic functions
+ * -> PrintRect("%r\n", SDL_Rect);
+ * -> PrintRect("%rf\n", SDL_FRect);
+ */
 void
-UpdateCanvas(Canvas *canvas);
-
-int
-main(int Argc, char **ppArgv)
+PrintRect(void *rect)
 {
-	void(*Version[2])(SDL_Event *e) = {Version1, Version2};
-	enum { ONE = 0, TWO = 1};
-	Init(Argc, ppArgv, &gInst);
-	sInfo sInfo = {
-		.pageStart = Argc > 2 ? atoi(ppArgv[2]) - 1 : 0,
-		.fZoom = Argc > 3 ? atof(ppArgv[3]) : 100,
-		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
-	};
-
-	// Set canvas size relative to nb page + size page
-	gCanvas.x = 0; gCanvas.y = 0;
-	gCanvas.h = 100; gCanvas.w = 500;
-	gCanvas.color = (SDL_Color) {.r = 0x80, .g = 0x80, .b = 0x80, .a = 0xFF};
-
-	int version = ONE;
-	CreatePDFContext(&gPdf, ppArgv[1], sInfo);
-	SDL_Event e;
-
-	gInst.lastPoll = GetCounter();
-	InitView();
-	gView = gView3.currentView2[2];
-	while(gInst.running)
-	{
-		AppUpdate(Version[version], &e);
-	}
-	AppQuit();
-	return 0;
+	SDL_FRect r = *(SDL_FRect *)rect;
+	printf("x: %f\t", r.x);
+	printf("y: %f\t", r.y);
+	printf("w: %f\t", r.w);
+	printf("h: %f\n", r.h);
 }
 
 void
@@ -86,27 +62,153 @@ AppUpdate(void(*Update)(SDL_Event *e), SDL_Event *e)
 void
 RenderDrawRectColor(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
 {
-	SDL_SetRenderDrawColor(gInst.pRenderer, 0x80, 0x80, 0x80, 0xFF);
-	SDL_RenderDrawRect(gInst.pRenderer, rect);
+	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
+	SDL_RenderDrawRect(r, rect);
 }
 
 void
 RenderDrawRectColorFill(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
 {
-	SDL_SetRenderDrawColor(gInst.pRenderer, 0x80, 0x80, 0x80, 0xFF);
-	SDL_RenderFillRect(gInst.pRenderer, rect);
+	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
+	SDL_RenderFillRect(r, rect);
 }
 
+/*
+ * TODO: Update only when condition is met
+ */
 void
-DrawCanvas(Canvas canvas)
+UpdateCanvas(Canvas *canvas, SDL_Color c)
 {
-	SDL_Rect rect = {
-		.x = canvas.x,
-		.y = canvas.y,
-		.h = canvas.h,
-		.w = canvas.w
-	};
+	int gap = 20;
+	canvas->h = gPdf.nbOfPages * (gPdf.pPages[0].position.h + gap);
+	canvas->h *= gScale;
+	canvas->w = gPdf.pPages[0].position.w;
+	canvas->w *= gScale;
+
+	// TODO: keep the canvas centered around the mouse when zooming
+	/* canvas->x = (gInst.width / 2) - (canvas->w / 2); */
+	/* canvas->y = 0; */
+	canvas->color = c;
+}
+
+struct CanvasInfo
+{
+	fz_pixmap	*pPixMaps;
+	SDL_Texture	*ppTexture;
+	int			nbPix;
+};
+
+#define MAX_VISIBLE_PAGES 20
+
+typedef struct sArray
+{
+	int pArray[MAX_VISIBLE_PAGES];
+	int size;
+}sArray;
+
+sArray
+GetVisiblePages(Canvas canvas, int pageHeight)
+{
+	static int temp;
+	sArray Array = {0};
+	memset(Array.pArray, 0, sizeof(Array.pArray)/sizeof(Array.pArray[0]));
+	int i = 0;
+	int j = 0;
+	assert(pageHeight > 0);
+	int start = abs(canvas.y) / pageHeight;
+	if (temp != start) { printf("%d / %d = %d\n", abs(canvas.y), pageHeight, start); temp = start; }
+	for (i = start; i < start + MAX_VISIBLE_PAGES && i < gPdf.nbOfPages; i++, j++)
+	{
+		if (j * pageHeight >= gInst.width)
+			break;
+		if (i <= 0)
+			printf("i = %d\n", i);
+		Array.pArray[j] = i;
+	}
+	Array.size = j;
+	return Array;
+}
+
+bool
+ArrayEquals(sArray *a, sArray *b)
+{
+	if (a->size != b->size)
+	{
+		printf("a: %d\t b%d\n", a->size, b->size);
+		return false;
+	}
+	for (int i = 0; i < a->size && i < b->size; i++)
+	{
+		if (a->pArray[i] != b->pArray[i])
+			return false;
+	}
+	return true;
+}
+
+/*
+ * TODO: The canvas will use a texture ( one ?) to be drawn at its
+ * "visible" coordinates -> texture always same dimensions
+ * unless window changes
+ */
+void
+DrawCanvas(Canvas canvas, SDL_Texture *texture, PDFPage *pPage)
+{
+	static SDL_FRect tmp = {0};
+	static sArray tmps = {0};
+	SDL_Rect rect = { .x = canvas.x, .y = canvas.y, .h = canvas.h, .w = canvas.w };
+	SDL_FRect rTextureDimensions = pPage->position;
+	rTextureDimensions.w *= gScale;
+	rTextureDimensions.h *= gScale;
+
+	sArray Array = GetVisiblePages(canvas, rTextureDimensions.h);
+	if (!ArrayEquals(&Array, &tmps))
+	{
+		for (int i = 0; i < Array.size; i++) printf("Array[%d]: %d\ttmps[%d]: %d\n", i, Array.pArray[i], i, tmps.pArray[i]);
+		memcpy(tmps.pArray, Array.pArray, Array.size * sizeof(int));
+		tmps.size = Array.size;
+		printf("tmps.size: %d\t Array.size: %d\n", tmps.size, Array.size);
+		for (int i = 0; i < tmps.size; i++) printf("tmps[%d]: %d\n", i, tmps.pArray[i]);
+
+	}
 	RenderDrawRectColorFill(gInst.pRenderer, &rect, canvas.color);
+	if (!SDL_FRectEquals(&rTextureDimensions, &tmp)){ PrintRect(&rTextureDimensions); tmp = rTextureDimensions; }
+
+	/* SDL_RenderCopyF(gInst.pRenderer, texture, NULL, &rTextureDimensions); */
+}
+
+int
+main(int Argc, char **ppArgv)
+{
+	void(*Version[2])(SDL_Event *e) = {Version1, Version2};
+
+	enum { ONE = 0, TWO = 1};
+	Init(Argc, ppArgv, &gInst);
+	sInfo sInfo = {
+		.pageStart = Argc > 2 ? atoi(ppArgv[2]) - 1 : 0,
+		.fZoom = Argc > 3 ? atof(ppArgv[3]) : 100,
+		.fRotate = Argc > 4 ? atof(ppArgv[4]) : 0
+	};
+
+	int version = ONE;
+	uint64_t elapsed;
+	gInst.lastPoll = GetCounter();
+	/* printf("time: %zu\n", elapsed = GetElapsed(GetCounter(), gInst.lastPoll)); */
+
+	if (!CreatePDFContext(&gPdf, ppArgv[1], sInfo))
+	{fprintf(stderr, "PdfContext could not be created\n"); exit(EXIT_FAILURE);}
+
+	/* Set canvas size relative to nb page + size page */
+
+	SDL_Event e;
+
+	InitView();
+	gView = gView3.currentView2[2];
+	while(gInst.running)
+	{
+		AppUpdate(Version[version], &e);
+	}
+	AppQuit();
+	return 0;
 }
 
 void
@@ -115,7 +217,8 @@ Version1(SDL_Event *e)
 	Event(e);
 	SDL_SetRenderDrawColor(gInst.pRenderer, 0x00, 0x00, 0x00, 0xFF);
 	SDL_RenderClear(gInst.pRenderer);
-	DrawCanvas(gCanvas);
+	UpdateCanvas(&gCanvas, GRAY);
+	DrawCanvas(gCanvas, NULL, &gPdf.pPages[0]);
 	SDL_RenderPresent(gInst.pRenderer);
 }
 
