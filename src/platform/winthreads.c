@@ -203,9 +203,9 @@ tRenderPage(void *pData)
 		ptData->failed = 1;
 	// Free this thread's context.
 	fz_drop_context(pCtx);
-	myLockMutex(gEventQueue.mutex, -1);
-	PushEvent(&gEventQueue, pageNumber); //signals main thread to render texture
-	myUnlockMutex(gEventQueue.mutex, -1);
+	/* myLockMutex(gEventQueue.mutex, -1); */
+	/* PushEvent(&gEventQueue, pageNumber); //signals main thread to render texture */
+	/* myUnlockMutex(gEventQueue.mutex, -1); */
 	fprintf(stderr, "thread at page %d done!\n", pageNumber);
 	return 1;
 }
