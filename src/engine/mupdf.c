@@ -81,6 +81,7 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 SDL_Texture* 
 LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int textureFormat)
 {
+	TracyCZoneNC(ctx1, "CreateTexture", 0xffff00, 1);
 	int x = fz_pixmap_x(pCtx, pPix);
 	int y = fz_pixmap_y(pCtx, pPix);
 	int width = fz_pixmap_width(pCtx, pPix);
@@ -98,12 +99,14 @@ LoadTextures(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, int tex
 
 	int w = 0, h = 0;
 	SDL_QueryTexture(pTexture, NULL, NULL, &w, &h);
+	TracyCZoneEnd(ctx1);
     return pTexture;
 }
 
 SDL_Texture* 
 PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_Texture *pTexture) 
 {
+	TracyCZoneNC(ctx, "PixmapToTexture", 0xff0000, 1);
 	void *pixels = NULL;
 	int pitch = 0;
 	int width = fz_pixmap_width(pCtx, pPix);
@@ -120,6 +123,7 @@ PixmapToTexture(SDL_Renderer *pRenderer, fz_pixmap *pPix, fz_context *pCtx, SDL_
 		memcpy(dest + y * pitch, pPix->samples + y * width * components, width * components);
 
 	SDL_UnlockTexture(pTexture);
+	TracyCZoneEnd(ctx);
     return pTexture;
 }
 
@@ -148,7 +152,8 @@ CreatePDFPage(fz_context *pCtx, const char *pFile, sInfo *sInfo)
 	TracyCZoneEnd(lp);
 
 	bbox = fz_bound_page(pCtxClone, pPage);
-	ctm = fz_transform_page(bbox, gpZoom[gCurrentZoom], sInfo->fRotate);
+	ctm = fz_transform_page(bbox, sInfo->fDpi, sInfo->fRotate);
+	/* ctm = fz_transform_page(bbox, gpZoom[gCurrentZoom], sInfo->fRotate); */
 	ibounds = fz_round_rect(fz_transform_rect(bbox, ctm));
 
 	TracyCZoneNC(pix, "LoadPixMap", 0x00ffff, 1)

@@ -31,7 +31,7 @@ CFLAGS =-nodefaultlibs
 CFLAGS +=-fms-runtime-lib=dll_dbg
 
 CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
-# CFLAGS += -DTRACY_ENABLE
+CFLAGS += -DTRACY_ENABLE
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
 LIBFLAGS =-Wl,-nodefaultlib:libcmt
