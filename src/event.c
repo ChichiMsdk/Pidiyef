@@ -117,16 +117,37 @@ ReloadPage(void)
 }
 
 int LoadPixMapFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sInfo sInfo);
+inline static void
+MoveCanvas(int key, Canvas *canvas);
+
+void
+ResizeWindow(void)
+{
+	SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.heigth);
+}
+
+void
+EventWindow(SDL_WindowEvent e)
+{
+	switch (e.event)
+	{
+		case (SDL_WINDOWEVENT_RESIZED):
+		case (SDL_WINDOWEVENT_MAXIMIZED):
+		case (SDL_WINDOWEVENT_EXPOSED):
+		case (SDL_WINDOWEVENT_SIZE_CHANGED):
+			ResizeWindow();
+			break;
+	}
+}
 
 void
 Event(SDL_Event *e)
 {
 	SDL_PollEvent(e);
-	/* FIXME: SDL seems not to handle windows event properly ?..*/
-	SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.heigth);
 
 	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
 	if (e->type == SDL_QUIT) { gInst.running = false; }
+	else if (e->type == SDL_WINDOWEVENT) EventWindow(e->window);
 	else if (e->type == SDL_KEYDOWN) 
 	{
 		switch (e->key.keysym.sym)
@@ -141,7 +162,8 @@ Event(SDL_Event *e)
 			case (SDLK_1):
 			case (SDLK_2):
 			case (SDLK_SPACE):
-				MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView);
+				MoveCanvas(e->key.keysym.sym, &gCanvas);
+				/* MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView); */
 				break;
 			case (SDLK_RIGHT):
 				/* ChangePage(NEXT_P); */
@@ -162,6 +184,60 @@ Event(SDL_Event *e)
 		 * else if (e->wheel.y < 0)
 		 * 	ChangePage(NEXT_P);
          */
+	}
+}
+
+inline static void
+MoveCanvas(int key, Canvas *canvas)
+{
+	switch (key)
+	{
+		case (SDLK_SPACE):
+			break;
+		case (SDLK_h):
+			{
+				canvas->x -= MOVE;
+				if (canvas->x <= 0) canvas->x = 0;
+				/* printf("canvas->x: %d\n", canvas->x); */
+				break;
+			}
+		case (SDLK_l):
+			{
+				canvas->x += MOVE;
+				if (canvas->x + canvas->w / 2 >= gInst.width) canvas->x -= MOVE;
+				/* printf("canvas->x: %d\n", canvas->x); */
+				break;
+			}
+		case (SDLK_j):
+			{
+				canvas->y += MOVE;
+				if (canvas->y + canvas->w / 2 >= gInst.heigth) canvas->y -= MOVE;
+				/* printf("canvas->y: %d\n", canvas->y); */
+				break;
+			}
+		case (SDLK_k):
+			{
+				canvas->y -= MOVE;
+				if (canvas->y <= (-1 * canvas->h)) canvas->y += MOVE;
+				/* printf("canvas->y: %d\n", canvas->y); */
+				break;
+			}
+		case (SDLK_1):
+			{
+				gScale /= 2.0f;
+				if (gScale <= 0.1f)
+					gScale = 0.1f;
+				break;
+			}
+		case (SDLK_2):
+			{
+				gScale *= 2.0f;
+				if (gScale >= 20.0f)
+					gScale = 20.0f;
+				break;
+			}
+		default:
+			break;
 	}
 }
 
