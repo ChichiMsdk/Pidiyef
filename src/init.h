@@ -30,8 +30,17 @@ typedef struct Instance
 
 }Instance;
 
+typedef struct Canvas
+{
+	int x, y;
+	int w, h;
+	SDL_Color color;
+}Canvas;
+
 extern float gZoom;
 extern int gRender;
+extern Canvas gCanvas;
+extern float gScale;
 extern Instance gInst;
 extern SDL_FRect gView;
 
