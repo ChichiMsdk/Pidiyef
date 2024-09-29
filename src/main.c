@@ -23,7 +23,7 @@
 Canvas gCanvas = {0};
 float gScale = 1.0f;
 
-Instance gInst = {.running = true, .width = 1300, .heigth = 900, .pWin = NULL, .pMutexes = NULL};
+Instance gInst = {.running = true, .width = 1300, .height = 900, .pWin = NULL, .pMutexes = NULL};
 
 PDFView gView3 = {0};
 SDL_FRect gView = {0};
@@ -111,7 +111,6 @@ GetVisiblePages(Canvas canvas, int pageHeight)
 {
 	static int temp;
 	sArray Array = {0};
-	memset(Array.pArray, 0, sizeof(Array.pArray)/sizeof(Array.pArray[0]));
 	int i = 0;
 	int j = 0;
 	assert(pageHeight > 0);
@@ -119,10 +118,8 @@ GetVisiblePages(Canvas canvas, int pageHeight)
 	if (temp != start) { printf("%d / %d = %d\n", abs(canvas.y), pageHeight, start); temp = start; }
 	for (i = start; i < start + MAX_VISIBLE_PAGES && i < gPdf.nbOfPages; i++, j++)
 	{
-		if (j * pageHeight >= gInst.width)
+		if (j * pageHeight >= gInst.height)
 			break;
-		if (i <= 0)
-			printf("i = %d\n", i);
 		Array.pArray[j] = i;
 	}
 	Array.size = j;
@@ -133,16 +130,44 @@ bool
 ArrayEquals(sArray *a, sArray *b)
 {
 	if (a->size != b->size)
-	{
-		printf("a: %d\t b%d\n", a->size, b->size);
 		return false;
-	}
 	for (int i = 0; i < a->size && i < b->size; i++)
 	{
 		if (a->pArray[i] != b->pArray[i])
 			return false;
 	}
 	return true;
+}
+
+fz_pixmap *
+RenderPdfPage(fz_context *pCtx, const char *pFile, sInfo *sInfo, fz_document *pDoc);
+
+void
+DrawPages(SDL_Renderer *r, sArray ArrayPage, SDL_FRect rect, Canvas canvas)
+{
+	int i = 0;
+	int *arr = ArrayPage.pArray;
+	for (i = 0; i < ArrayPage.size; i++)
+	{
+		sInfo sInfo = {.fRotate = 0.0f, .fDpi = 72.0f, .fZoom = 100.0f, .pageStart = arr[i]};
+		if (gPdf.pPages[arr[i]].bPpmCache == false)
+		{
+			gPdf.pPages[arr[i]].pPix = CreatePDFPage(gPdf.pCtx, gPdf.pFile, &sInfo);
+			gPdf.pPages[arr[i]].bPpmCache = true;
+		}
+		if (!gInst.pMainTexture)
+			gInst.pMainTexture = LoadTextures(r, gPdf.pPages[arr[i]].pPix, gPdf.pCtx, SDL_TEXTUREACCESS_STREAMING);
+
+		gInst.pMainTexture = PixmapToTexture(r, gPdf.pPages[arr[i]].pPix, gPdf.pCtx, gInst.pMainTexture);
+
+		rect.y = (gPdf.pPages[arr[i]].position.y * gScale) + canvas.y;
+		rect.x = canvas.x;
+		SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture, NULL, &rect);
+        /*
+		 * fz_drop_pixmap(gPdf.pCtx, gPdf.pPages[arr[i]].pPix);
+		 * gPdf.pPages[arr[i]].pPix = NULL;
+         */
+	}
 }
 
 /*
@@ -159,6 +184,8 @@ DrawCanvas(Canvas canvas, SDL_Texture *texture, PDFPage *pPage)
 	SDL_FRect rTextureDimensions = pPage->position;
 	rTextureDimensions.w *= gScale;
 	rTextureDimensions.h *= gScale;
+	rTextureDimensions.x = canvas.x;
+	rTextureDimensions.y += canvas.y;
 
 	sArray Array = GetVisiblePages(canvas, rTextureDimensions.h);
 	if (!ArrayEquals(&Array, &tmps))
@@ -166,22 +193,19 @@ DrawCanvas(Canvas canvas, SDL_Texture *texture, PDFPage *pPage)
 		for (int i = 0; i < Array.size; i++) printf("Array[%d]: %d\ttmps[%d]: %d\n", i, Array.pArray[i], i, tmps.pArray[i]);
 		memcpy(tmps.pArray, Array.pArray, Array.size * sizeof(int));
 		tmps.size = Array.size;
-		printf("tmps.size: %d\t Array.size: %d\n", tmps.size, Array.size);
-		for (int i = 0; i < tmps.size; i++) printf("tmps[%d]: %d\n", i, tmps.pArray[i]);
-
 	}
 	RenderDrawRectColorFill(gInst.pRenderer, &rect, canvas.color);
-	if (!SDL_FRectEquals(&rTextureDimensions, &tmp)){ PrintRect(&rTextureDimensions); tmp = rTextureDimensions; }
+	DrawPages(gInst.pRenderer, Array, rTextureDimensions, canvas);
 
-	/* SDL_RenderCopyF(gInst.pRenderer, texture, NULL, &rTextureDimensions); */
+	/* if (!SDL_FRectEquals(&rTextureDimensions, &tmp)){ PrintRect(&rTextureDimensions); tmp = rTextureDimensions; } */
 }
 
 int
 main(int Argc, char **ppArgv)
 {
 	void(*Version[2])(SDL_Event *e) = {Version1, Version2};
-
 	enum { ONE = 0, TWO = 1};
+
 	Init(Argc, ppArgv, &gInst);
 	sInfo sInfo = {
 		.pageStart = Argc > 2 ? atoi(ppArgv[2]) - 1 : 0,
@@ -196,8 +220,6 @@ main(int Argc, char **ppArgv)
 
 	if (!CreatePDFContext(&gPdf, ppArgv[1], sInfo))
 	{fprintf(stderr, "PdfContext could not be created\n"); exit(EXIT_FAILURE);}
-
-	/* Set canvas size relative to nb page + size page */
 
 	SDL_Event e;
 

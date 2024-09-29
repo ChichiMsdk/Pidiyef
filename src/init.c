@@ -27,7 +27,7 @@ Init(int ac, char **av, Instance *inst)
 	SDL_Window *window = SDL_CreateWindow( "Pdf Viewer",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
-			gInst.width , gInst.heigth,
+			gInst.width , gInst.height,
 			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_VULKAN);
 	if (!window)
 	{
@@ -62,7 +62,7 @@ Init(int ac, char **av, Instance *inst)
 	gView3.currentView.h = 841.890015;
 
 	gView3.currentView.x = gInst.width / 2.0f - gView3.currentView.w / 2.0f;
-	gView3.currentView.y = gInst.heigth / 2.0f - gView3.currentView.h / 2.0f;
+	gView3.currentView.y = gInst.height / 2.0f - gView3.currentView.h / 2.0f;
 
 	gView3.nextView.x = gView3.currentView.x; gView3.nextView.y = gView3.currentView.y;
 	gView3.nextView.w = gView3.currentView.w; gView3.nextView.h = gView3.currentView.h;
