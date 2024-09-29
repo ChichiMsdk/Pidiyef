@@ -244,17 +244,14 @@ CreatePDFContext(PDFContext *PdfCtx, char *pFile, sInfo sInfo)
 		fz_register_document_handlers(PdfCtx->pCtx);
 	fz_catch(PdfCtx->pCtx)
 		goto myErrorHandle;
-
 	fz_try(PdfCtx->pCtx)
 		PdfCtx->pDoc = fz_open_document(PdfCtx->pCtx, pFile);
 	fz_catch(PdfCtx->pCtx)
 		goto myError;
-
 	fz_try(PdfCtx->pCtx)
 		PdfCtx->nbOfPages = fz_count_pages(PdfCtx->pCtx, PdfCtx->pDoc);
 	fz_catch(PdfCtx->pCtx)
 		goto myError;
-
 	PdfCtx->pPages = LoadPagesArray(PdfCtx->nbOfPages);
 	PdfCtx->viewingPage = sInfo.pageStart;
 	return PdfCtx;
@@ -267,16 +264,26 @@ myError:
 	return NULL;
 }
 
+void
+PrintRect(void *rect);
+
 PDFPage *
 LoadPagesArray(size_t nbOfPages)
 {
 	PDFPage *pPages = malloc(sizeof(PDFPage) * nbOfPages);
 	/* NOTE: This is probably right, have to check: Want every value to 0 ! */
 	memset(pPages, 0, sizeof(PDFPage) * nbOfPages);
-	int width = 595;
-	int height = 842;
+
+	// NOTE: are all the pages the same size ? 
+	fz_page *pPage = fz_load_page(gPdf.pCtx, gPdf.pDoc, 1);
+	fz_rect bounds = fz_bound_page(gPdf.pCtx, pPage);
+	fz_irect ibounds = fz_round_rect(bounds);
+	fz_drop_page(gPdf.pCtx, pPage);
+
+	int width = ibounds.x1 - ibounds.x0;
+	int height = ibounds.y1 - ibounds.y0;
 	int gap = 20;
-	// TODO: retrieve the data from mupdf for page dimensions !
+
 	for (int i = 0; i < nbOfPages; i++)
 	{
 		pPages[i].bPpmCache = false;
