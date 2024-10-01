@@ -11,7 +11,8 @@
 extern PDFView gView3;
 extern int gRender;
 
-#define MOVE 50.0f
+float MOVE[] = {50.0f, 500.0f, 5000.0f};
+int MMOVE = 0;
 
 inline static void
 MoveRect(int key, PDFView *pView, SDL_FRect *pRect);
@@ -193,32 +194,35 @@ MoveCanvas(int key, Canvas *canvas)
 	switch (key)
 	{
 		case (SDLK_SPACE):
+			MMOVE++;
+			if (MMOVE >= sizeof(MOVE) / sizeof(float))
+				MMOVE = 0;
 			break;
 		case (SDLK_h):
 			{
-				canvas->x -= MOVE;
+				canvas->x -= MOVE[MMOVE];
 				if (canvas->x <= 0) canvas->x = 0;
 				/* printf("canvas->x: %d\n", canvas->x); */
 				break;
 			}
 		case (SDLK_l):
 			{
-				canvas->x += MOVE;
-				if (canvas->x + canvas->w / 2 >= gInst.width) canvas->x -= MOVE;
+				canvas->x += MOVE[MMOVE];
+				if (canvas->x + canvas->w / 2 >= gInst.width) canvas->x -= MOVE[MMOVE];
 				/* printf("canvas->x: %d\n", canvas->x); */
 				break;
 			}
 		case (SDLK_j):
 			{
-				canvas->y += MOVE;
-				if (canvas->y + canvas->w / 2 >= gInst.height) canvas->y -= MOVE;
+				canvas->y += MOVE[MMOVE];
+				if (canvas->y + canvas->w / 2 >= gInst.height) canvas->y -= MOVE[MMOVE];
 				/* printf("canvas->y: %d\n", canvas->y); */
 				break;
 			}
 		case (SDLK_k):
 			{
-				canvas->y -= MOVE;
-				if (canvas->y <= (-1 * canvas->h)) canvas->y += MOVE;
+				canvas->y -= MOVE[MMOVE];
+				if (canvas->y <= (-1 * canvas->h)) canvas->y += MOVE[MMOVE];
 				/* printf("canvas->y: %d\n", canvas->y); */
 				break;
 			}
@@ -251,28 +255,28 @@ MoveRect(int key, PDFView *pView, SDL_FRect *pRect)
 			goto reloading;
 		case (SDLK_h):
 			{
-				pRect->x -= MOVE; 
+				pRect->x -= MOVE[MMOVE]; 
 				if (pRect->x <= (-1.0f * pRect->w))
 					pRect->x = (pRect->w * -1.0f) + 1;
 				goto nothing;
 			}
 		case (SDLK_l):
 			{
-				pRect->x += MOVE; 
+				pRect->x += MOVE[MMOVE]; 
 				if (pRect->x >= (gInst.width))
 					pRect->x = (gInst.width - 100);
 				goto nothing;
 			}
 		case (SDLK_j):
 			{
-				pRect->y += MOVE; 
+				pRect->y += MOVE[MMOVE]; 
 				if (pRect->y >= (gInst.height))
 					pRect->y = (gInst.height) - 1;
 				goto nothing;
 			}
 		case (SDLK_k):
 			{
-				pRect->y -= MOVE; 
+				pRect->y -= MOVE[MMOVE]; 
 				if (pRect->y <= (-1.0f * pRect->h))
 					pRect->y = (pRect->h * -1.0f) + 1;
 				goto nothing;

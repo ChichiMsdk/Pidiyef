@@ -79,11 +79,19 @@ RenderDrawRectColorFill(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
 void
 UpdateCanvas(Canvas *canvas, SDL_Color c)
 {
+	static float old;
 	int gap = 20;
-	canvas->h = gPdf.nbOfPages * (gPdf.pPages[0].position.h + gap);
+	/* gPdf.pPages[gPdf.nbOfPages - 1].position.y); */
+	canvas->h = (gPdf.nbOfPages - 1) * (gPdf.pPages[0].position.h + gap);
 	canvas->h *= gScale;
 	canvas->w = gPdf.pPages[0].position.w;
 	canvas->w *= gScale;
+	if (old != gScale)
+	{
+		canvas->x *= gScale;
+		canvas->y *= gScale;
+		old = gScale;
+	}
 
 	// TODO: keep the canvas centered around the mouse when zooming
 	/* canvas->x = (gInst.width / 2) - (canvas->w / 2); */
@@ -114,11 +122,18 @@ GetVisiblePages(Canvas canvas, int pageHeight)
 	int i = 0;
 	int j = 0;
 	assert(pageHeight > 0);
-	int start = abs(canvas.y) / pageHeight;
-	if (temp != start) { printf("%d / %d = %d\n", abs(canvas.y), pageHeight, start); temp = start; }
+	int gap = 20;
+	float start = abs(canvas.y) / (pageHeight + gap);
+    /*
+	 * printf("canvas->h: %d\n", canvas->h);
+	 * printf("pPages[%zu].position.y: %f\n", gPdf.nbOfPages - 1, gPdf.pPages[gPdf.nbOfPages-1].position.h);
+     */
+	if (start > 0)
+		start--;
+	if (temp != start) { printf("%d / %d = %f\n", abs(canvas.y), pageHeight, start); temp = start; }
 	for (i = start; i < start + MAX_VISIBLE_PAGES && i < gPdf.nbOfPages; i++, j++)
 	{
-		if (j * pageHeight >= gInst.height)
+		if (((gPdf.pPages[i].position.y) + canvas.y) > gInst.height)
 			break;
 		Array.pArray[j] = i;
 	}
@@ -160,7 +175,7 @@ DrawPages(SDL_Renderer *r, sArray ArrayPage, SDL_FRect rect, Canvas canvas)
 
 		gInst.pMainTexture = PixmapToTexture(r, gPdf.pPages[arr[i]].pPix, gPdf.pCtx, gInst.pMainTexture);
 
-		rect.y = (gPdf.pPages[arr[i]].position.y * gScale) + canvas.y;
+		rect.y = (gPdf.pPages[arr[i]].position.y) + canvas.y;
 		rect.x = canvas.x;
 		SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture, NULL, &rect);
         /*
@@ -184,13 +199,17 @@ DrawCanvas(Canvas canvas, SDL_Texture *texture, PDFPage *pPage)
 	SDL_FRect rTextureDimensions = pPage->position;
 	rTextureDimensions.w *= gScale;
 	rTextureDimensions.h *= gScale;
-	rTextureDimensions.x = canvas.x;
-	rTextureDimensions.y += canvas.y;
+	/* rTextureDimensions.x -= abs(canvas.x); */
+	rTextureDimensions.y -= abs(canvas.y);
+	/* rTextureDimensions.x *= gScale; */
 
 	sArray Array = GetVisiblePages(canvas, rTextureDimensions.h);
 	if (!ArrayEquals(&Array, &tmps))
 	{
-		for (int i = 0; i < Array.size; i++) printf("Array[%d]: %d\ttmps[%d]: %d\n", i, Array.pArray[i], i, tmps.pArray[i]);
+        /*
+		 * for (int i = 0; i < Array.size; i++) 
+		 *    printf("Array[%d]: %d\ttmps[%d]: %d\n", i, Array.pArray[i], i, tmps.pArray[i]);
+         */
 		memcpy(tmps.pArray, Array.pArray, Array.size * sizeof(int));
 		tmps.size = Array.size;
 	}
