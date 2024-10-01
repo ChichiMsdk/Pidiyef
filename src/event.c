@@ -144,47 +144,48 @@ EventWindow(SDL_WindowEvent e)
 void
 Event(SDL_Event *e)
 {
-	SDL_PollEvent(e);
-
-	sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
-	if (e->type == SDL_QUIT) { gInst.running = false; }
-	else if (e->type == SDL_WINDOWEVENT) EventWindow(e->window);
-	else if (e->type == SDL_KEYDOWN) 
+	while(SDL_PollEvent(e))
 	{
-		switch (e->key.keysym.sym)
+		sInfo sInfo = {.nbrPages = 5, 3, 800, 0};
+		if (e->type == SDL_QUIT) { gInst.running = false; }
+		else if (e->type == SDL_WINDOWEVENT) EventWindow(e->window);
+		else if (e->type == SDL_KEYDOWN) 
 		{
-			case (SDLK_ESCAPE):
-				gInst.running = false; 
-				break;
-			case (SDLK_h):
-			case (SDLK_l):
-			case (SDLK_j):
-			case (SDLK_k):
-			case (SDLK_1):
-			case (SDLK_2):
-			case (SDLK_SPACE):
-				MoveCanvas(e->key.keysym.sym, &gCanvas);
-				/* MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView); */
-				break;
-			case (SDLK_RIGHT):
-				/* ChangePage(NEXT_P); */
-				break;
-			case (SDLK_LEFT):
-				/* ChangePage(BACK_P); */
-				break;
-			case (SDLK_3):
-				/* LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo); */
-				break;
+			switch (e->key.keysym.sym)
+			{
+				case (SDLK_ESCAPE):
+					gInst.running = false; 
+					break;
+				case (SDLK_h):
+				case (SDLK_l):
+				case (SDLK_j):
+				case (SDLK_k):
+				case (SDLK_1):
+				case (SDLK_2):
+				case (SDLK_SPACE):
+					MoveCanvas(e->key.keysym.sym, &gCanvas);
+					/* MoveRect(e->key.keysym.sym, &gView3, &gView3.nextView); */
+					break;
+				case (SDLK_RIGHT):
+					/* ChangePage(NEXT_P); */
+					break;
+				case (SDLK_LEFT):
+					/* ChangePage(BACK_P); */
+					break;
+				case (SDLK_3):
+					/* LoadPixMapFromThreads(&gPdf, gPdf.pCtx, gPdf.pFile, sInfo); */
+					break;
+			}
 		}
-	}
-	else if (e->type == SDL_MOUSEWHEEL)
-	{
-        /*
-		 * if (e->wheel.y > 0)
-		 * 	ChangePage(BACK_P);
-		 * else if (e->wheel.y < 0)
-		 * 	ChangePage(NEXT_P);
-         */
+		else if (e->type == SDL_MOUSEWHEEL)
+		{
+			/*
+			 * if (e->wheel.y > 0)
+			 * 	ChangePage(BACK_P);
+			 * else if (e->wheel.y < 0)
+			 * 	ChangePage(NEXT_P);
+			 */
+		}
 	}
 }
 

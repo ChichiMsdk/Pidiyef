@@ -19,6 +19,20 @@
 #define SACRAMENTO_GREEN (SDL_Color) {.r = 0x04, .g = 0x39, .b = 0x27, .a = 255}
 #define GRAY (SDL_Color) {.r = 0x80, .g = 0x80, .b = 0x80, .a = 255}
 
+#define MAX_VISIBLE_PAGES 20
+
+struct CanvasInfo
+{
+	fz_pixmap	*pPixMaps;
+	SDL_Texture	*ppTexture;
+	int			nbPix;
+};
+
+typedef struct sArray
+{
+	int pArray[MAX_VISIBLE_PAGES];
+	int size;
+}sArray;
 
 Canvas gCanvas = {0};
 float gScale = 1.0f;
@@ -31,47 +45,15 @@ SDL_FRect gView = {0};
 PDFContext gPdf = {0};
 float gZoom = 1.0f;
 
+bool ArrayEquals(sArray *a, sArray *b);
 void AppUpdate(void (*Update)(SDL_Event *e), SDL_Event *e);
 void AppQuit();
 void Version1(SDL_Event *e);
 void Version2(SDL_Event *e);
+void PrintRect(void *rect);
+void RenderDrawRectColor(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c);
+void RenderDrawRectColorFill(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c);
 const char* __asan_default_options() { return "detect_leaks=0"; }
-
-/*
- * TODO: Make my own variadic functions
- * -> PrintRect("%r\n", SDL_Rect);
- * -> PrintRect("%rf\n", SDL_FRect);
- */
-void
-PrintRect(void *rect)
-{
-	SDL_FRect r = *(SDL_FRect *)rect;
-	printf("x: %f\t", r.x);
-	printf("y: %f\t", r.y);
-	printf("w: %f\t", r.w);
-	printf("h: %f\n", r.h);
-}
-
-void
-AppUpdate(void(*Update)(SDL_Event *e), SDL_Event *e)
-{
-	Update(e);
-	/* SDL_Delay(16); */
-}
-
-void
-RenderDrawRectColor(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
-{
-	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
-	SDL_RenderDrawRect(r, rect);
-}
-
-void
-RenderDrawRectColorFill(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
-{
-	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
-	SDL_RenderFillRect(r, rect);
-}
 
 /*
  * TODO: Update only when condition is met
@@ -92,27 +74,11 @@ UpdateCanvas(Canvas *canvas, SDL_Color c)
 		canvas->y *= gScale;
 		old = gScale;
 	}
-
 	// TODO: keep the canvas centered around the mouse when zooming
 	/* canvas->x = (gInst.width / 2) - (canvas->w / 2); */
 	/* canvas->y = 0; */
 	canvas->color = c;
 }
-
-struct CanvasInfo
-{
-	fz_pixmap	*pPixMaps;
-	SDL_Texture	*ppTexture;
-	int			nbPix;
-};
-
-#define MAX_VISIBLE_PAGES 20
-
-typedef struct sArray
-{
-	int pArray[MAX_VISIBLE_PAGES];
-	int size;
-}sArray;
 
 sArray
 GetVisiblePages(Canvas canvas, int pageHeight)
@@ -133,27 +99,13 @@ GetVisiblePages(Canvas canvas, int pageHeight)
 	if (temp != start) { printf("%d / %d = %f\n", abs(canvas.y), pageHeight, start); temp = start; }
 	for (i = start; i < start + MAX_VISIBLE_PAGES && i < gPdf.nbOfPages; i++, j++)
 	{
-		if (((gPdf.pPages[i].position.y) + canvas.y) > gInst.height)
+		if (((gPdf.pPages[i].position.y * gScale) + canvas.y) > gInst.height)
 			break;
 		Array.pArray[j] = i;
 	}
 	Array.size = j;
 	return Array;
 }
-
-bool
-ArrayEquals(sArray *a, sArray *b)
-{
-	if (a->size != b->size)
-		return false;
-	for (int i = 0; i < a->size && i < b->size; i++)
-	{
-		if (a->pArray[i] != b->pArray[i])
-			return false;
-	}
-	return true;
-}
-
 fz_pixmap *
 RenderPdfPage(fz_context *pCtx, const char *pFile, sInfo *sInfo, fz_document *pDoc);
 
@@ -175,7 +127,7 @@ DrawPages(SDL_Renderer *r, sArray ArrayPage, SDL_FRect rect, Canvas canvas)
 
 		gInst.pMainTexture = PixmapToTexture(r, gPdf.pPages[arr[i]].pPix, gPdf.pCtx, gInst.pMainTexture);
 
-		rect.y = (gPdf.pPages[arr[i]].position.y) + canvas.y;
+		rect.y = (gPdf.pPages[arr[i]].position.y * gScale) + canvas.y;
 		rect.x = canvas.x;
 		SDL_RenderCopyF(gInst.pRenderer, gInst.pMainTexture, NULL, &rect);
         /*
@@ -247,6 +199,7 @@ main(int Argc, char **ppArgv)
 	while(gInst.running)
 	{
 		AppUpdate(Version[version], &e);
+		SDL_Delay(16);
 	}
 	AppQuit();
 	return 0;
@@ -261,6 +214,54 @@ Version1(SDL_Event *e)
 	UpdateCanvas(&gCanvas, GRAY);
 	DrawCanvas(gCanvas, NULL, &gPdf.pPages[0]);
 	SDL_RenderPresent(gInst.pRenderer);
+}
+
+bool
+ArrayEquals(sArray *a, sArray *b)
+{
+	if (a->size != b->size)
+		return false;
+	for (int i = 0; i < a->size && i < b->size; i++)
+	{
+		if (a->pArray[i] != b->pArray[i])
+			return false;
+	}
+	return true;
+}
+/*
+ * TODO: Make my own variadic functions
+ * -> PrintRect("%r\n", SDL_Rect);
+ * -> PrintRect("%rf\n", SDL_FRect);
+ */
+void
+PrintRect(void *rect)
+{
+	SDL_FRect r = *(SDL_FRect *)rect;
+	printf("x: %f\t", r.x);
+	printf("y: %f\t", r.y);
+	printf("w: %f\t", r.w);
+	printf("h: %f\n", r.h);
+}
+
+void
+AppUpdate(void(*Update)(SDL_Event *e), SDL_Event *e)
+{
+	Update(e);
+	/* SDL_Delay(16); */
+}
+
+void
+RenderDrawRectColor(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
+{
+	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
+	SDL_RenderDrawRect(r, rect);
+}
+
+void
+RenderDrawRectColorFill(SDL_Renderer *r, SDL_Rect *rect, SDL_Color c)
+{
+	SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a);
+	SDL_RenderFillRect(r, rect);
 }
 
 void
