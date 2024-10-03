@@ -7,6 +7,8 @@
 #include "event.h"
 #include "platform/os_threads.h"
 
+#define MAX_VISIBLE_PAGES 20
+
 typedef struct TextureMap
 {
 	SDL_Texture	*pTexture;

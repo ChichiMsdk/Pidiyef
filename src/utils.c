@@ -227,3 +227,16 @@ clearCache(EventQueue *q)
 		q->q[i] = 0;
 	}
 }
+
+bool
+ArrayEquals(sArray *a, sArray *b)
+{
+	if (a->size != b->size)
+		return false;
+	for (int i = 0; i < a->size && i < b->size; i++)
+	{
+		if (a->pArray[i] != b->pArray[i])
+			return false;
+	}
+	return true;
+}

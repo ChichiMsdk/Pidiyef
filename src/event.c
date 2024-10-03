@@ -124,7 +124,9 @@ MoveCanvas(int key, Canvas *canvas);
 void
 ResizeWindow(void)
 {
+	printf("gInst.width %d, gInst.height %d\t->", gInst.width, gInst.height);
 	SDL_GetWindowSize(gInst.pWin, &gInst.width, &gInst.height);
+	printf("gInst.width %d, gInst.height %d\n", gInst.width, gInst.height);
 }
 
 void

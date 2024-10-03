@@ -70,7 +70,7 @@ Init(int ac, char **av, Instance *inst)
 	gView3.oldView.x = gView3.currentView.x; gView3.oldView.y = gView3.currentView.y;
 	gView3.oldView.w = gView3.currentView.w; gView3.oldView.h = gView3.currentView.h;
 
-	gInst.pTextureMap = malloc(sizeof(TextureMap) * 20);
+	gInst.pTextureMap = malloc(sizeof(TextureMap) * MAX_VISIBLE_PAGES);
 	for (int i = 0; i < 20; i++)
 	{
 		gInst.pTextureMap[i].pTexture = NULL;

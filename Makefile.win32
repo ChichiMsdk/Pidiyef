@@ -30,8 +30,8 @@ CFLAGS =-nodefaultlibs
 # CFLAGS +=-mavx -msse -msse2
 CFLAGS +=-fms-runtime-lib=dll_dbg
 
-CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE)
-CFLAGS += -DTRACY_ENABLE
+CFLAGS +=-DPLATFORM_WINDOWS -g -O0 -fdeclspec -MJ$(JSON_FILE) 
+CFLAGS += -DTRACY_ENABLE 
 # CFLAGS = -MT -DTRACY_ENABLE -DTRACY_ENABLE
 
 LIBFLAGS =-Wl,-nodefaultlib:libcmt
@@ -101,14 +101,14 @@ compile_commands.json:
 
 clean:
 	@echo Deleting files..
-	rm -f $(BUILD_DIR)/$(NAME)$(EXTENSION)
-	rm -f $(BUILD_DIR)/$(NAME).pdb
-	rm -f $(BUILD_DIR)/$(NAME).exp
-	rm -f $(BUILD_DIR)/$(NAME).lib
-	rm -f $(BUILD_DIR)/vc140.pdb
-	rm -f $(BUILD_DIR)/*.obj
-	rm -f $(BUILD_DIR)/obj/*.o
-	rm -f $(BUILD_DIR)/*.ilk
+	@rm -f $(BUILD_DIR)/$(NAME)$(EXTENSION)
+	@rm -f $(BUILD_DIR)/$(NAME).pdb
+	@rm -f $(BUILD_DIR)/$(NAME).exp
+	@rm -f $(BUILD_DIR)/$(NAME).lib
+	@rm -f $(BUILD_DIR)/vc140.pdb
+	@rm -f $(BUILD_DIR)/*.obj
+	@rm -f $(BUILD_DIR)/obj/*.o
+	@rm -f $(BUILD_DIR)/*.ilk
 
 fclean: clean
 	rm -f compile_commands.json

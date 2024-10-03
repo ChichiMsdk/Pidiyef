@@ -38,6 +38,7 @@ extern uint64_t gCounterStart;
 extern uint64_t gCounterEnd;
 extern uint64_t gStartProgram;
 
+void		CheckThreads(void);
 double		GetElapsed(uint64_t endTime, uint64_t startTime);
 void		InitPerfFreq(void);
 uint64_t	GetCounter(void);

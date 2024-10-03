@@ -14,12 +14,14 @@
 	typedef void* Mutex;
 #endif
 
+#define MAX_VISIBLE_PAGES 20
 #define MAX_MUTEX 10
 
 /* NOTE: provide function for specific pages ?..*/
 typedef struct sInfo
 {
 	int				pageStart;
+	int				pageIndex[MAX_VISIBLE_PAGES];
 	int				nbrPages;
 	float			fZoom;
 	float			fRotate;

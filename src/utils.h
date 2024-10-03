@@ -4,6 +4,11 @@
 #include "import/containers.h"
 #include "import/gui.h"
 
+#ifndef MAX_VISIBLE_PAGES
+#define MAX_VISIBLE_PAGES 20
+#endif
+
+
 // static inline void UpdateSmooth2(float factor, int i, PDFPage **p);
 // static inline void UpdateSmooth(float factor);
 
@@ -29,8 +34,22 @@ typedef struct VisibleArray
 	int count;
 }VisibleArray;
 
+struct CanvasInfo
+{
+	fz_pixmap	*pPixMaps;
+	SDL_Texture	*ppTexture;
+	int			nbPix;
+};
+
+typedef struct sArray
+{
+	int pArray[MAX_VISIBLE_PAGES];
+	int size;
+}sArray;
+
 extern VisibleArray gVisible;
 
+bool	ArrayEquals(sArray *a, sArray *b);
 void	ReloadPage(void);
 void	MegaLoop(void);
 void	resize(void);

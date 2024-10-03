@@ -312,15 +312,98 @@ LoadTexturesFromThreads(PDFContext *pdf, fz_context *pCtx, const char *pFile, sI
 }
 
 int
+PixMapFromThreads(fz_context *pCtx, const char *pFile, sInfo sInfo, fz_document *pDoc)
+{
+
+	fz_display_list *pList;
+	fz_context		*pCtxClone;
+	fz_pixmap		*pPix;
+	fz_device		*pDev = NULL;
+	fz_matrix		ctm;
+	fz_page			*pPage;
+	fz_rect			bbox;
+	fz_rect			t_bounds;
+	fz_irect		ibounds;
+
+	tData *ptData[25];
+	int count = sInfo.nbrPages;
+	assert(count < 25);
+
+	fz_var(gInst.pThreads);
+	fz_try(pCtx)
+	{
+		gInst.pThreads = malloc(sizeof(void *) * count);
+		gInst.nbThreads = count;
+
+		for (int i = 0; i < count; i++)
+		{
+			fz_var(pDev);
+
+			fz_try(pCtx)
+			{
+				pPage = fz_load_page(pCtx, pDoc, sInfo.pageIndex[i]);
+				bbox = fz_bound_page(pCtx, pPage);
+				ctm = fz_transform_page(bbox, sInfo.fDpi, sInfo.fRotate);
+				t_bounds = fz_transform_rect(bbox, ctm);
+				pList = fz_new_display_list(pCtx, bbox);
+				pDev = fz_new_list_device(pCtx, pList);
+				fz_run_page(pCtx, pPage, pDev, ctm, NULL);
+				fz_close_device(pCtx, pDev);
+				gPdf.pPages[sInfo.pageIndex[i]].sInfo = sInfo;
+				gPdf.pPages[sInfo.pageIndex[i]].sInfo.pageStart = sInfo.pageIndex[i];
+			}
+			fz_always(pCtx)
+			{
+				fz_drop_device(pCtx, pDev);
+				fz_drop_page(pCtx, pPage);
+			}
+			fz_catch(pCtx)
+				fz_rethrow(pCtx);
+
+			ptData[i] = malloc(sizeof(tData));
+
+			ptData[i]->ctx = pCtx;
+			ptData[i]->pPage = &gPdf.pPages[sInfo.pageIndex[i]];
+			ptData[i]->list = pList;
+			ptData[i]->bbox = t_bounds;
+			ptData[i]->failed = 0;
+			ptData[i]->id = i;
+			
+			gInst.pThreads[i] = myCreateThread(ptData[i]);
+			if (gInst.pThreads[i] == (myThread)0) 
+			{
+				ThreadFail("CreateThread");
+				exit(1);
+			}
+		}
+	}
+	fz_always(pCtx)
+	{
+		free(gInst.pThreads);
+	}
+	fz_catch(pCtx)
+	{
+		fz_report_error(pCtx);
+		ThreadFail("Error bro\n");
+	}
+    return 0;
+}
+
+int
 LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sInfo sInfo)
 {
+	fz_context		*pCtxClone;
+	fz_pixmap		*pPix;
+	fz_device		*pDev;
+	fz_matrix		ctm;
+	fz_page			*pPage;
+	fz_rect			bbox;
+	fz_rect			t_bounds;
+	fz_irect		ibounds;
+	fz_document		*pDoc;
+
 	tData *ptData[100];
 	int count = 0;
-	fz_document *pDoc = fz_open_document(pCtx, pFile);
-	assert(pDoc);
-	fz_rect t_bounds;
-
-	fz_matrix ctm;
 	ctm = fz_scale(sInfo.fZoom / 100, sInfo.fZoom / 100);
 	ctm = fz_pre_rotate(ctm, sInfo.fRotate);
 
@@ -328,7 +411,6 @@ LoadPixMapFromThreads(PDFContext *pPdf, fz_context *pCtx, const char *pFile, sIn
 	fz_try(pCtx)
 	{
 		count = fz_count_pages(pCtx, pDoc);
-		pPdf->nbOfPages = count;
 		assert(count > 0);
 		count = count > sInfo.pageStart + sInfo.nbrPages ? sInfo.nbrPages : count; 
 		assert(count < GetNbProc());

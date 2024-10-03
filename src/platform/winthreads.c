@@ -9,6 +9,7 @@
 #	include <strsafe.h>
 #	include <sysinfoapi.h>
 
+#	include "init.h"
 #	include "import/containers.h"
 #	include "platform/os_threads.h"
 
@@ -153,6 +154,16 @@ myWaitThreads(myThread *pThreads, int threadCount)
 	WaitForMultipleObjects(threadCount, pThreads, TRUE, INFINITE);
 }
 
+/*
+ * A thread in an executable that is linked to the static C run-time library (CRT)
+ * should use _beginthread and _endthread for thread management rather than CreateThread and ExitThread.
+ * Failure to do so results in small memory leaks when the thread calls ExitThread.
+ * Another work around is to link the executable to the CRT in a DLL instead of the static CRT.
+ * Note that this memory leak only occurs from a DLL if the DLL is linked to the static CRT and
+ * a thread calls the DisableThreadLibraryCalls function.
+ * Otherwise, it is safe to call CreateThread and ExitThread from a thread in a DLL that links to the static CRT. 
+ */
+
 myThread
 myCreateThread(tData *ptData)
 {
@@ -165,6 +176,22 @@ myDestroyThread(myThread Thread)
 	return CloseHandle(Thread);
 }
 
+/* TODO: Improve this shitty function */
+void
+CheckThreads(void)
+{
+	DWORD exitCode;
+	for (int i = 0; i < gInst.nbThreads; i++)
+	{
+		GetExitCodeThread(gInst.pThreads[i], &exitCode);
+		if (exitCode != STILL_ACTIVE)
+		{
+			CloseHandle(gInst.pThreads[i]);
+			gInst.pThreads[i] = NULL;
+		}
+	}
+}
+
 DWORD WINAPI
 tRenderPage(void *pData)
 {
@@ -175,7 +202,6 @@ tRenderPage(void *pData)
 	fz_rect bbox = ptData->bbox;
 	fz_device *pDev = NULL;
 
-	fprintf(stderr, "thread at page %d loading!\n", pageNumber);
 	// The context pointer is pointing to the main thread's
 	// context, so here we create a new context based on it for
 	// use in this thread.
@@ -183,14 +209,13 @@ tRenderPage(void *pData)
 	// Next we run the display list through the draw device which
 	// will render the request area of the page to the pixmap.
 	fz_var(pDev);
-	fprintf(stderr, "thread at page %d rendering!\n", pageNumber);
 	fz_try(pCtx)
 	{
 		// Create a white pixmap using the correct dimensions.
 		ptData->pPage->pPix = fz_new_pixmap_with_bbox(pCtx,
 				fz_device_rgb(pCtx), fz_round_rect(bbox), NULL, 0);
 
-		fz_clear_pixmap_with_value(pCtx, ptData->pPage->pPix, 0xff);
+		fz_clear_pixmap_with_value(pCtx, ptData->pPage->pPix, 255);
 
 		// Do the actual rendering.
 		pDev = fz_new_draw_device(pCtx, fz_identity, ptData->pPage->pPix);
@@ -201,13 +226,15 @@ tRenderPage(void *pData)
 		fz_drop_device(pCtx, pDev);
 	fz_catch(pCtx)
 		ptData->failed = 1;
-	// Free this thread's context.
+
+	fz_drop_display_list(pCtx, ptData->list);
 	fz_drop_context(pCtx);
 	/* myLockMutex(gEventQueue.mutex, -1); */
 	/* PushEvent(&gEventQueue, pageNumber); //signals main thread to render texture */
 	/* myUnlockMutex(gEventQueue.mutex, -1); */
 	fprintf(stderr, "thread at page %d done!\n", pageNumber);
-	return 1;
+	free(ptData);
+	return 0;
 }
 
 #endif //PLATFORM_WINDOWS
